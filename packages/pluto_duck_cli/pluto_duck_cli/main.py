@@ -2,6 +2,8 @@
 
 import typer
 
+from pluto_duck_backend.app.core.config import get_settings
+from pluto_duck_backend.app.services.transformation import DbtService
 
 app = typer.Typer(help="Local-first Pluto-Duck CLI")
 
@@ -23,6 +25,34 @@ def version() -> None:
     from pluto_duck_backend import __version__
 
     typer.echo(__version__)
+
+
+@app.command()
+def dbt_run(select: str = typer.Option(None, help="Space-separated dbt selection")) -> None:
+    """Run dbt models."""
+    settings = get_settings()
+    service = DbtService(
+        settings.dbt.project_path,
+        settings.dbt.profiles_path,
+        settings.data_dir.artifacts / "dbt",
+        settings.duckdb.path,
+    )
+    args = select.split(" ") if select else None
+    typer.echo(service.run(select=args))
+
+
+@app.command()
+def dbt_test(select: str = typer.Option(None, help="Space-separated dbt selection")) -> None:
+    """Run dbt tests."""
+    settings = get_settings()
+    service = DbtService(
+        settings.dbt.project_path,
+        settings.dbt.profiles_path,
+        settings.data_dir.artifacts / "dbt",
+        settings.duckdb.path,
+    )
+    args = select.split(" ") if select else None
+    typer.echo(service.test(select=args))
 
 
 if __name__ == "__main__":
