@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pluto-duck"
+version = "0.1.0"
+description = "Local-first analytics studio: backend API, CLI, and reference frontend."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Pluto-Duck OSS Team" }
+]
+keywords = ["duckdb", "analytics", "local-first", "ai", "dbt"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fastapi>=0.112,<0.113",
+    "uvicorn[standard]>=0.30,<0.31",
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "sqlalchemy>=2.0,<3.0",
+    "duckdb>=1.1,<2.0",
+    "pyarrow>=21.0,<22.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "typer>=0.12,<0.13",
+    "rich>=13.7,<14.0",
+    "httpx>=0.27,<0.28",
+    "python-dotenv>=1.0,<1.1"
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2,<4.0"]
+dbt = ["dbt-core>=1.8,<2.0"]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-asyncio>=0.23,<0.24",
+    "ruff>=0.6,<0.7",
+    "mypy>=1.11,<2.0",
+    "types-requests>=2.32,<3.0"
+]
+
+[project.scripts]
+pluto-duck = "pluto_duck_cli:app"
+
+[tool.setuptools.packages.find]
+where = ["backend", "packages"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "I", "B", "Q"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+warn_unused_configs = true
+ignore_missing_imports = true
+

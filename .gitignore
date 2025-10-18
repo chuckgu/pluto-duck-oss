@@ -1,0 +1,17 @@
+legacy/
+.DS_Store
+
+.venv
+__pycache__
+pluto_duck.egg-info
+.pytest_cache
+.github
+.cursor
+.ruff_cache
+.mypy_cache
+.env
+.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
