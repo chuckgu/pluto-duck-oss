@@ -22,15 +22,17 @@ dependencies = [
     "fastapi>=0.112,<0.113",
     "uvicorn[standard]>=0.30,<0.31",
     "pydantic>=2.9,<3.0",
-    "pydantic-settings>=2.6,<3.0",
+    "pydantic-settings>=2.3,<3.0", # Added for config management
     "sqlalchemy>=2.0,<3.0",
     "duckdb>=1.1,<2.0",
-    "pyarrow>=21.0,<22.0",
-    "psycopg[binary]>=3.2,<4.0",
     "typer>=0.12,<0.13",
     "rich>=13.7,<14.0",
     "httpx>=0.27,<0.28",
-    "python-dotenv>=1.0,<1.1"
+    "python-dotenv>=1.0,<1.1",
+    "pyarrow>=21.0,<22.0", # Updated version
+    "pandas>=2.2,<3.0",
+    "langgraph>=1.0,<2.0",
+    "langchain-core>=0.3,<0.4",
 ]
 
 [project.optional-dependencies]

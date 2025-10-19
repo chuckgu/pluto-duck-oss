@@ -1,0 +1,33 @@
+"""SQL generation node."""
+
+from __future__ import annotations
+
+from pluto_duck_backend.agent.core import AgentState, MessageRole
+from pluto_duck_backend.agent.core.llm.providers import get_llm_provider
+from pluto_duck_backend.agent.core.prompts import try_load_prompt
+
+DEFAULT_SQL_PROMPT = (
+    "Generate a SELECT SQL query that can answer the user's question using DuckDB tables."
+    " Return only SQL code."
+)
+
+
+def build_sql_node():
+    prompt_template = try_load_prompt("sql_prompt") or DEFAULT_SQL_PROMPT
+
+    async def sql_node(state: AgentState) -> AgentState:
+        provider = get_llm_provider()
+        prompt = (
+            f"{prompt_template}\n"
+            f"User question: {state.user_query}\n"
+            f"Plan steps: {[step.description for step in state.plan]}\n"
+            f"Schema preview: {state.context.get('schema_preview', [])}\n"
+        )
+        response = await provider.ainvoke(prompt)
+        state.working_sql = response.strip()
+        state.add_message(MessageRole.ASSISTANT, f"Candidate SQL:\n{state.working_sql}")
+        return state
+
+    return sql_node
+
+

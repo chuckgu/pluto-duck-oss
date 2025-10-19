@@ -30,7 +30,12 @@ pytest backend
 
 # Run API locally
 pluto-duck run
+
+# Stream agent events for a natural-language question
+pluto-duck agent-stream "List customers"
 ```
+
+Agent responses are also available via `/api/v1/agent/{run_id}/events` as SSE streams. Each event carries structured JSON describing reasoning updates, tool outputs, and final summaries (see `docs/ARCHITECTURE.md`).
 
 ## Roadmap Highlights
 

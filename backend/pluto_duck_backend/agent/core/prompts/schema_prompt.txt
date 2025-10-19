@@ -1,0 +1,1 @@
+Summarize available DuckDB tables relevant to the user's plan. Focus on short names and omit system tables.

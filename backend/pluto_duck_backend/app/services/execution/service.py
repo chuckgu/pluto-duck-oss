@@ -19,6 +19,7 @@ class QueryJob:
     result_table: Optional[str] = None
     error: Optional[str] = None
     completed_at: Optional[datetime] = None
+    rows_affected: Optional[int] = None
 
 
 class QueryExecutionService:
@@ -39,10 +40,15 @@ class QueryExecutionService:
                     submitted_at TIMESTAMP,
                     completed_at TIMESTAMP,
                     result_relation TEXT,
-                    error TEXT
+                    error TEXT,
+                    rows_affected BIGINT
                 )
                 """
             )
+            # Ensure rows_affected column exists for pre-existing tables
+            columns = {row[0] for row in con.execute("DESCRIBE query_history").fetchall()}
+            if "rows_affected" not in columns:
+                con.execute("ALTER TABLE query_history ADD COLUMN rows_affected BIGINT")
 
     def _sanitize_relation(self, job_id: str) -> str:
         sanitized = "".join(ch for ch in job_id if ch.isalnum() or ch == "_")
@@ -72,15 +78,16 @@ class QueryExecutionService:
             result_relation = self._sanitize_relation(job_id)
             try:
                 con.execute(f"CREATE OR REPLACE TABLE {result_relation} AS {sql}")
+                rows_affected = con.execute(f"SELECT COUNT(*) FROM {result_relation}").fetchone()[0]
                 completed_at = datetime.now(UTC)
                 con.execute(
-                    "UPDATE query_history SET status=?, completed_at=?, result_relation=?, error=NULL WHERE job_id=?",
-                    ["success", completed_at, result_relation, job_id],
+                    "UPDATE query_history SET status=?, completed_at=?, result_relation=?, error=NULL, rows_affected=? WHERE job_id=?",
+                    ["success", completed_at, result_relation, rows_affected, job_id],
                 )
             except duckdb.Error as exc:
                 completed_at = datetime.now(UTC)
                 con.execute(
-                    "UPDATE query_history SET status=?, completed_at=?, error=? WHERE job_id=?",
+                    "UPDATE query_history SET status=?, completed_at=?, error=?, rows_affected=NULL WHERE job_id=?",
                     ["failed", completed_at, str(exc), job_id],
                 )
                 raise
@@ -89,7 +96,7 @@ class QueryExecutionService:
     def fetch(self, job_id: str) -> Optional[QueryJob]:
         with duckdb.connect(str(self.warehouse_path)) as con:
             row = con.execute(
-                "SELECT job_id, sql, status, submitted_at, completed_at, result_relation, error FROM query_history WHERE job_id=?",
+                "SELECT job_id, sql, status, submitted_at, completed_at, result_relation, error, rows_affected FROM query_history WHERE job_id=?",
                 [job_id],
             ).fetchone()
         if not row:
@@ -108,6 +115,7 @@ class QueryExecutionService:
             completed_at=completed_at,
             result_table=row[5],
             error=row[6],
+            rows_affected=row[7],
         )
 
 

@@ -37,3 +37,18 @@ This document summarizes the target architecture. For full detail, refer to
 - Integration tests with DuckDB fixtures and dbt sample project.
 - CLI smoke tests via pytest subprocess.
 
+## Agent Event Stream
+
+The agent orchestrator uses LangGraph to emit structured events over Server-Sent Events (SSE) and the CLI stream command. Each event contains `type`, `subtype`, `content`, and `timestamp` fields:
+
+- `reasoning.start` / `reasoning.chunk`: LLM controller updates. `content` includes the latest decision (planner/schema/sql/verifier/finalize) and an optional reasoning message.
+- `tool.chunk` / `tool.end`: Tool execution snapshots.
+  - `planner`: emits the current plan as an array of `{description, status, metadata}`.
+  - `schema`: shares the `schema_preview` table list.
+  - `sql`: includes the generated SQL statement.
+  - `verifier`: provides query verification result metadata (`job_id`, `result_table`, `rows_affected`, `error`).
+- `message.final`: Finalization payload with context flags (e.g., `finished: true`).
+- `run.chunk` / `run.end` / `run.error`: Generic updates for nodes without specialized handlers and overall completion/error states.
+
+Consumers (CLI, frontend) should parse the `content` object based on `type`/`subtype`. The `/api/v1/agent/{run_id}/events` endpoint streams these events; `pluto-duck agent-stream` prints them for debugging.
+
