@@ -4,10 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 import duckdb
+
+
+class QueryJobStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
 @dataclass
@@ -15,7 +23,7 @@ class QueryJob:
     job_id: str
     sql: str
     submitted_at: datetime
-    status: str
+    status: QueryJobStatus
     result_table: Optional[str] = None
     error: Optional[str] = None
     completed_at: Optional[datetime] = None
@@ -45,7 +53,6 @@ class QueryExecutionService:
                 )
                 """
             )
-            # Ensure rows_affected column exists for pre-existing tables
             columns = {row[0] for row in con.execute("DESCRIBE query_history").fetchall()}
             if "rows_affected" not in columns:
                 con.execute("ALTER TABLE query_history ADD COLUMN rows_affected BIGINT")
@@ -61,9 +68,9 @@ class QueryExecutionService:
         with duckdb.connect(str(self.warehouse_path)) as con:
             con.execute(
                 "INSERT OR REPLACE INTO query_history (job_id, sql, status, submitted_at) VALUES (?, ?, ?, ?)",
-                [job_id, sql, "pending", submitted_at],
+                [job_id, sql, QueryJobStatus.PENDING.value, submitted_at],
             )
-        return QueryJob(job_id=job_id, sql=sql, status="pending", submitted_at=submitted_at)
+        return QueryJob(job_id=job_id, sql=sql, status=QueryJobStatus.PENDING, submitted_at=submitted_at)
 
     def execute(self, job_id: str) -> QueryJob:
         with duckdb.connect(str(self.warehouse_path)) as con:
@@ -82,13 +89,13 @@ class QueryExecutionService:
                 completed_at = datetime.now(UTC)
                 con.execute(
                     "UPDATE query_history SET status=?, completed_at=?, result_relation=?, error=NULL, rows_affected=? WHERE job_id=?",
-                    ["success", completed_at, result_relation, rows_affected, job_id],
+                    [QueryJobStatus.SUCCESS.value, completed_at, result_relation, rows_affected, job_id],
                 )
             except duckdb.Error as exc:
                 completed_at = datetime.now(UTC)
                 con.execute(
                     "UPDATE query_history SET status=?, completed_at=?, error=?, rows_affected=NULL WHERE job_id=?",
-                    ["failed", completed_at, str(exc), job_id],
+                    [QueryJobStatus.FAILED.value, completed_at, str(exc), job_id],
                 )
                 raise
         return self.fetch(job_id)  # type: ignore[return-value]
@@ -107,10 +114,11 @@ class QueryExecutionService:
         completed_at = row[4]
         if isinstance(completed_at, datetime) and completed_at.tzinfo is None:
             completed_at = completed_at.replace(tzinfo=UTC)
+        status = QueryJobStatus(row[2])
         return QueryJob(
             job_id=row[0],
             sql=row[1],
-            status=row[2],
+            status=status,
             submitted_at=submitted_at,
             completed_at=completed_at,
             result_table=row[5],

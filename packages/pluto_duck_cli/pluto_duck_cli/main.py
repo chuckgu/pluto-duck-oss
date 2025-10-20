@@ -1,7 +1,13 @@
 """Typer-based CLI for Pluto-Duck."""
 
 import asyncio
+import itertools
+import json
+import sys
+import threading
+import time
 from pathlib import Path
+
 import typer
 
 from pluto_duck_backend import __version__
@@ -9,7 +15,41 @@ from pluto_duck_backend.agent.core.orchestrator import get_agent_manager, run_ag
 from pluto_duck_backend.app.core.config import get_settings
 from pluto_duck_backend.app.services.ingestion import IngestionJob, IngestionService, get_registry
 from pluto_duck_backend.app.services.transformation import DbtService
-from pluto_duck_backend.app.services.execution import QueryExecutionManager, QueryJob, QueryJobStatus
+from pluto_duck_backend.app.services.execution import QueryExecutionManager, QueryJobStatus
+
+
+def run_async(coro):
+    """Run an async coroutine from synchronous Typer commands."""
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
+
+
+def run_with_spinner(coro, message: str = "Thinking"):
+    """Run a coroutine while displaying a simple spinner animation."""
+
+    stop_event = threading.Event()
+
+    def _spin() -> None:
+        frames = itertools.cycle("|/-\\")
+        while not stop_event.is_set():
+            sys.stdout.write(f"\r{message} {next(frames)}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+        sys.stdout.write("\r" + " " * (len(message) + 2) + "\r")
+        sys.stdout.flush()
+
+    spinner_thread = threading.Thread(target=_spin, daemon=True)
+    spinner_thread.start()
+    try:
+        return run_async(coro)
+    finally:
+        stop_event.set()
+        spinner_thread.join()
 
 
 app = typer.Typer(help="Local-first Pluto-Duck CLI")
@@ -61,9 +101,9 @@ def dbt_test(select: str = typer.Option(None, help="Space-separated dbt selectio
 @app.command()
 def ingest(
     connector: str = typer.Argument(..., help="Connector name"),
-    target_table: str = typer.Option(..., "--target", help="Target DuckDB table"),
-    overwrite: bool = typer.Option(False, help="Overwrite existing table"),
-    config: str = typer.Option(None, help="Connector config as JSON string"),
+    target_table: str = typer.Option(..., "--target-table", help="Target DuckDB table"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing table"),
+    config: str = typer.Option(None, "--config", help="Connector config as JSON string"),
 ) -> None:
     """Run an ingestion job using a registered connector."""
 
@@ -88,13 +128,12 @@ def query(sql: str = typer.Argument(..., help="SQL query to execute")) -> None:
     job_id = manager.submit(sql)
     typer.echo(f"Query submitted with job ID: {job_id}")
     job = manager.fetch(job_id)
-    while job.status in [QueryJobStatus.PENDING, QueryJobStatus.RUNNING]:
+    while job.status in {QueryJobStatus.PENDING, QueryJobStatus.RUNNING}:
         typer.echo(f"Job {job_id} status: {job.status.value}...")
-        import time
         time.sleep(1)
         job = manager.fetch(job_id)
 
-    if job.status == QueryJobStatus.COMPLETED:
+    if job.status == QueryJobStatus.SUCCESS:
         typer.echo(f"Query completed. Result table: {job.result_table}")
     else:
         typer.echo(f"Query failed: {job.error}")
@@ -104,12 +143,13 @@ def query(sql: str = typer.Argument(..., help="SQL query to execute")) -> None:
 def agent(question: str = typer.Argument(..., help="Natural language question for the agent")) -> None:
     """Run the local agent once and display the final result."""
 
-    async def _run() -> None:
-        result = await run_agent_once(question)
+    def _run() -> None:
+        typer.echo("Starting agent...")
+        result = run_with_spinner(run_agent_once(question), message="Thinking")
         typer.echo(typer.style("Agent run completed", fg=typer.colors.GREEN))
         typer.echo(result)
 
-    asyncio.run(_run())
+    _run()
 
 
 @app.command()
@@ -126,7 +166,7 @@ def agent_stream(question: str = typer.Argument(..., help="Natural language ques
         typer.echo(typer.style("Final result", fg=typer.colors.GREEN))
         typer.echo(final)
 
-    asyncio.run(_stream())
+    run_async(_stream())
 
 
 if __name__ == "__main__":

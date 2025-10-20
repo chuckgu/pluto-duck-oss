@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from pluto_duck_backend.agent.core import AgentState, MessageRole
 from pluto_duck_backend.app.core.config import get_settings
-from pluto_duck_backend.app.services.execution import QueryExecutionService
+from pluto_duck_backend.app.services.execution import QueryExecutionService, QueryJobStatus
 
 
 def build_verifier_node():
@@ -35,8 +35,7 @@ def build_verifier_node():
             state.add_message(MessageRole.ASSISTANT, f"Query failed: {state.verification_result['error']}")
             return state
 
-        status = job.status if isinstance(job.status, str) else getattr(job.status, "value", str(job.status))
-        if status == "success":
+        if job.status == QueryJobStatus.SUCCESS:
             state.verification_result = {
                 "job_id": job.job_id,
                 "rows_affected": job.rows_affected,

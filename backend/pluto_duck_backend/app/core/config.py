@@ -4,6 +4,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,6 +35,19 @@ class AgentSettings(BaseModel):
     api_base: Optional[HttpUrl] = Field(default=None, description="Override base URL for provider")
     api_key: Optional[str] = Field(default=None, description="API key for the LLM provider")
     mock_mode: bool = Field(default=False, description="Use local mock responses instead of live LLM")
+    reasoning_effort: Literal["minimal", "low", "medium", "high"] = Field(
+        default="medium",
+        description="Reasoning depth for GPT-5 family models",
+    )
+    text_verbosity: Literal["low", "medium", "high"] = Field(
+        default="medium",
+        description="Verbosity level for GPT-5 family models",
+    )
+    max_output_tokens: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Optional token cap for GPT-5 responses",
+    )
 
 
 class DataDirectory(BaseModel):

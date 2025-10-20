@@ -52,3 +52,7 @@ The agent orchestrator uses LangGraph to emit structured events over Server-Sent
 
 Consumers (CLI, frontend) should parse the `content` object based on `type`/`subtype`. The `/api/v1/agent/{run_id}/events` endpoint streams these events; `pluto-duck agent-stream` prints them for debugging.
 
+Agent responses are also available via `/api/v1/agent/{run_id}/events` as SSE streams. Each event carries structured JSON describing reasoning updates, tool outputs, and final summaries (see `docs/ARCHITECTURE.md`).
+
+For hands-on CLI usage with a real GPT-5 provider, follow `docs/AGENT_CLI_GUIDE.md`.
+

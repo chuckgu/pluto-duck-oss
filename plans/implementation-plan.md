@@ -4,6 +4,7 @@ Based on `.cursor/plans/pluto-duck-re-architecture-plan-9662a618.plan.md` and
 `.cursor/plans/backend-spec.plan.md`.
 
 ## Phase 1 — Core Backend & CLI (Weeks 1-6)
+*Status: Completed October 19, 2025 — Milestones A through E delivered with passing test suite (`pytest backend/tests/agent backend/tests/api/test_agent_api.py`).*
 
 ### Milestone A: Foundations (Week 1)
 - Finalize project scaffolding: ensure `pyproject.toml`, package layout, and virtualenv workflow.
