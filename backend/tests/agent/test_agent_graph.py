@@ -38,6 +38,6 @@ async def test_agent_graph_completes(monkeypatch) -> None:
     assert result["context"].get("finished") is True
     assert result["working_sql"]
     assert result["verification_result"] is not None
-    assert "job_id" in result["verification_result"]
+    assert "run_id" in result["verification_result"]
 
 

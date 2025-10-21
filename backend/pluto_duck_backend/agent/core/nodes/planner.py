@@ -26,6 +26,7 @@ def build_planner_node():
         state.add_message(MessageRole.ASSISTANT, "Plan updated:")
         for step in steps:
             state.add_message(MessageRole.ASSISTANT, f"- {step.description}")
+        _log("planner_steps", conversation_id=state.conversation_id, step_count=len(steps))
         return state
 
     return planner_node
@@ -52,5 +53,10 @@ def _parse_steps(text: str) -> List[PlanStep]:
         pass
     lines = [line.strip("- ") for line in text.splitlines() if line.strip()]
     return [PlanStep(description=line) for line in lines[:3]] or [PlanStep(description="Run sample query")]
+
+
+def _log(message: str, **fields: object) -> None:
+    payload = " ".join(f"{key}={value}" for key, value in fields.items()) if fields else ""
+    print(f"[agent][planner] {message} {payload}")
 
 

@@ -5,7 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import asdict, is_dataclass
+from json import dumps
 from typing import Any, AsyncIterator, Dict, Iterable, List, Optional
+
+from datetime import datetime
+from enum import Enum
 from uuid import uuid4
 
 from pluto_duck_backend.agent.core import (
@@ -17,13 +21,25 @@ from pluto_duck_backend.agent.core import (
     PlanStep,
 )
 from pluto_duck_backend.agent.core.graph import build_agent_graph
+from pluto_duck_backend.app.services.chat import get_chat_repository
+
+
+def _log(message: str, **fields: Any) -> None:
+    payload = " ".join(f"{key}={value}" for key, value in fields.items()) if fields else ""
+    print(f"[agent] {message} {payload}")
 
 
 def _serialize(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, Enum):
+        return value.value
     if isinstance(value, AgentState):
         return value.to_dict()
     if isinstance(value, PlanStep):
         return asdict(value)
+    if isinstance(value, dict):
+        return {k: _serialize(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_serialize(item) for item in value]
     if is_dataclass(value):
@@ -45,31 +61,62 @@ def _serialize_plan(update: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [_serialize(step) for step in plan]
 
 
+def safe_dump_event(event: Dict[str, Any]) -> str:
+    """Serialize an event dictionary into an SSE data payload."""
+
+    return f"data: {dumps(_serialize(event))}\n\n"
+
+
 class AgentRun:
-    def __init__(self, conversation_id: str, question: str) -> None:
+    def __init__(self, run_id: str, conversation_id: str, question: str) -> None:
+        self.run_id = run_id
         self.conversation_id = conversation_id
         self.question = question
         self.queue: asyncio.Queue[Optional[Dict[str, Any]]] = asyncio.Queue()
         self.done = asyncio.Event()
         self.result: Optional[Dict[str, Any]] = None
-        self.flags: Dict[str, Any] = {"reasoning_started": False}
+        self.flags: Dict[str, Any] = {}
 
 
 class AgentRunManager:
     def __init__(self) -> None:
         self._runs: Dict[str, AgentRun] = {}
 
-    def start_run(self, question: str) -> str:
+    def start_run(self, question: str) -> tuple[str, str]:
         conversation_id = str(uuid4())
-        run = AgentRun(conversation_id, question)
-        self._runs[conversation_id] = run
+        run_id = self.start_run_for_conversation(conversation_id, question, create_if_missing=True)
+        return conversation_id, run_id
+
+    def start_run_for_conversation(
+        self,
+        conversation_id: str,
+        question: str,
+        *,
+        create_if_missing: bool = False,
+    ) -> str:
+        repo = get_chat_repository()
+        summary = repo.get_conversation_summary(conversation_id)
+
+        if summary is None:
+            if not create_if_missing:
+                raise KeyError(conversation_id)
+            repo.create_conversation(conversation_id, question)
+
+        run_id = str(uuid4())
+        run = AgentRun(run_id, conversation_id, question)
+        self._runs[run_id] = run
+        _log("run_started", run_id=run_id, conversation_id=conversation_id)
+        repo.append_message(conversation_id, "user", {"text": question})
+        repo.set_active_run(conversation_id, run_id)
+        repo.mark_run_started(conversation_id, last_message_preview=question[:160])
         asyncio.create_task(self._execute_run(run))
-        return conversation_id
+        return run_id
 
     async def _execute_run(self, run: AgentRun) -> None:
         graph = build_agent_graph()
         state = AgentState(conversation_id=run.conversation_id, user_query=run.question)
         state.add_message(MessageRole.USER, run.question)
+        repo = get_chat_repository()
 
         final_state: Dict[str, Any] = {}
         try:
@@ -82,7 +129,9 @@ class AgentRunManager:
                     for node_name, update in payload.items():
                         events = self._events_from_update(node_name, update, run)
                         for event in events:
-                            await run.queue.put(event.to_dict())
+                            event_dict = event.to_dict()
+                            await run.queue.put(event_dict)
+                            repo.log_event(run.conversation_id, event_dict)
                 elif mode == "values":
                     if isinstance(payload, dict):
                         final_state = _serialize(payload)
@@ -94,32 +143,37 @@ class AgentRunManager:
             )
             await run.queue.put(event.to_dict())
             final_state = {"error": str(exc)}
+            repo.log_event(run.conversation_id, event.to_dict())
+            _log("run_failed", run_id=run.run_id, conversation_id=run.conversation_id, error=str(exc))
         finally:
             run.result = final_state
-            await run.queue.put(
-                AgentEvent(
-                    type=EventType.RUN,
-                    subtype=EventSubType.END,
-                    content=_serialize(final_state),
-                ).to_dict()
+            end_event = AgentEvent(
+                type=EventType.RUN,
+                subtype=EventSubType.END,
+                content=_serialize(final_state),
+            )
+            await run.queue.put(end_event.to_dict())
+            repo.log_event(run.conversation_id, end_event.to_dict())
+            repo.mark_run_completed(
+                run.conversation_id,
+                status="failed" if "error" in final_state else "completed",
+                final_preview=self._final_preview(final_state),
             )
             await run.queue.put(None)
             run.done.set()
+            _log(
+                "run_completed",
+                run_id=run.run_id,
+                conversation_id=run.conversation_id,
+                status="failed" if "error" in final_state else "completed",
+            )
 
     def _events_from_update(self, node_name: str, update: Dict[str, Any], run: AgentRun) -> List[AgentEvent]:
         events: List[AgentEvent] = []
         if node_name == "reasoning":
             decision = update.get("context", {}).get("reasoning_decision")
             reason = _extract_reasoning_message(update) or ""
-            if not run.flags["reasoning_started"]:
-                events.append(
-                    AgentEvent(
-                        type=EventType.REASONING,
-                        subtype=EventSubType.START,
-                        content={"decision": decision, "reason": reason},
-                    )
-                )
-                run.flags["reasoning_started"] = True
+            # Send one reasoning event per node execution (avoid duplicates)
             events.append(
                 AgentEvent(
                     type=EventType.REASONING,
@@ -164,30 +218,49 @@ class AgentRunManager:
                 )
             )
         elif node_name == "finalize":
-            info = update.get("context", {})
+            context = update.get("context", {})
+            final_answer = context.get("final_answer", "")
+            
+            # Create event with just the final answer
             events.append(
                 AgentEvent(
                     type=EventType.MESSAGE,
                     subtype=EventSubType.FINAL,
-                    content=_serialize(info),
+                    content={"text": final_answer},
                 )
             )
+            
+            # Save only the final answer to DB, not the entire context
+            repo = get_chat_repository()
+            repo.append_message(run.conversation_id, "assistant", {"text": final_answer})
         return events
 
-    async def stream_events(self, conversation_id: str) -> AsyncIterator[Dict[str, Any]]:
-        run = self._runs.get(conversation_id)
+    def _final_preview(self, final_state: Dict[str, Any]) -> Optional[str]:
+        if not final_state:
+            return None
+        if isinstance(final_state, dict):
+            text = final_state.get("answer") or final_state.get("summary")
+            if isinstance(text, str):
+                return text[:160]
+        try:
+            return json.dumps(_serialize(final_state))[:160]
+        except Exception:
+            return str(final_state)[:160]
+
+    async def stream_events(self, run_id: str) -> AsyncIterator[Dict[str, Any]]:
+        run = self._runs.get(run_id)
         if run is None:
-            raise KeyError(conversation_id)
+            raise KeyError(run_id)
         while True:
             item = await run.queue.get()
             if item is None:
                 break
             yield item
 
-    async def get_result(self, conversation_id: str) -> Dict[str, Any]:
-        run = self._runs.get(conversation_id)
+    async def get_result(self, run_id: str) -> Dict[str, Any]:
+        run = self._runs.get(run_id)
         if run is None:
-            raise KeyError(conversation_id)
+            raise KeyError(run_id)
         await run.done.wait()
         return run.result or {}
 

@@ -12,10 +12,18 @@ from pluto_duck_backend.app.api.router import api_router
 class DummyManager:
     def __init__(self) -> None:
         self.latest_run: str | None = None
+        self._runs: dict[str, dict] = {}
 
-    def start_run(self, question: str) -> str:
+    def start_run(self, question: str) -> tuple[str, str]:
+        conversation_id = str(uuid4())
         run_id = str(uuid4())
         self.latest_run = run_id
+        self._runs[run_id] = {"question": question, "conversation_id": conversation_id}
+        return conversation_id, run_id
+
+    def start_run_for_conversation(self, conversation_id: str, question: str, *, create_if_missing: bool = False) -> str:
+        _, run_id = self.start_run(question)
+        self._runs[run_id]["conversation_id"] = conversation_id
         return run_id
 
     async def get_result(self, run_id: str) -> dict:

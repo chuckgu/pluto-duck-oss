@@ -24,8 +24,14 @@ def build_schema_node():
         state.context["schema_preview"] = tables
         summary = f"Schema preview: {', '.join(tables)}" if tables else "No tables found."
         state.add_message(MessageRole.ASSISTANT, summary)
+        _log("schema_preview", conversation_id=state.conversation_id, table_count=len(tables))
         return state
 
     return schema_node
+
+
+def _log(message: str, **fields: object) -> None:
+    payload = " ".join(f"{key}={value}" for key, value in fields.items()) if fields else ""
+    print(f"[agent][schema] {message} {payload}")
 
 

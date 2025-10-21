@@ -46,7 +46,7 @@ The agent orchestrator uses LangGraph to emit structured events over Server-Sent
   - `planner`: emits the current plan as an array of `{description, status, metadata}`.
   - `schema`: shares the `schema_preview` table list.
   - `sql`: includes the generated SQL statement.
-  - `verifier`: provides query verification result metadata (`job_id`, `result_table`, `rows_affected`, `error`).
+  - `verifier`: provides query verification result metadata (`run_id`, `result_table`, `rows_affected`, `error`).
 - `message.final`: Finalization payload with context flags (e.g., `finished: true`).
 - `run.chunk` / `run.end` / `run.error`: Generic updates for nodes without specialized handlers and overall completion/error states.
 

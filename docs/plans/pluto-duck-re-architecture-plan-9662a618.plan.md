@@ -26,7 +26,7 @@ This roadmap outlines the plan to transform the Pluto-Duck project into a powerf
 - **Action:** Redesign the API in `backend/app/main.py` to be clean, public-facing, and optimized for the new chat-based frontend and third-party integrations.
     - **Key Endpoints:**
         - `POST /api/v1/query`: Accepts a natural language query and returns a job ID.
-        - `GET /api/v1/query/{job_id}`: Streams results, logs, and final data.
+        - `GET /api/v1/query/{run_id}`: Streams results, logs, and final data.
 - **Action:** Create a simple Command Line Interface (CLI) for essential functions like `ingest` and `run-dbt`.
 
 ### 4. Project Packaging and Documentation

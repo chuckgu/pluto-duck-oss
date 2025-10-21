@@ -76,9 +76,9 @@ Define the architecture and feature set for the open-source, local-first backend
 - Framework: FastAPI.
 - Authentication: optional API token (env/config); default open for localhost.
 - Endpoints (initial set):
-  - `POST /api/v1/query`: submit NL query → returns `job_id`.
-  - `GET /api/v1/query/{job_id}`: poll job status & results.
-  - `GET /api/v1/query/{job_id}/events`: Server-Sent Events for step updates.
+  - `POST /api/v1/query`: submit NL query → returns `run_id`.
+  - `GET /api/v1/query/{run_id}`: poll job status & results.
+  - `GET /api/v1/query/{run_id}/events`: Server-Sent Events for step updates.
   - `POST /api/v1/ingest`: trigger ingestion job (source config payload).
   - `POST /api/v1/dbt/run`: execute dbt models (tags, selection).
 - Error handling with structured responses and trace IDs.

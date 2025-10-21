@@ -56,12 +56,12 @@ def _build_default_catalog() -> ActionCatalog:
 
     def query_handler(sql: str) -> dict:
         manager = get_execution_manager()
-        job_id = manager.submit_sql(sql)
-        job = manager.wait_for(job_id)
+        run_id = manager.submit_sql(sql)
+        job = manager.wait_for(run_id)
         if not job:
             raise RuntimeError("Query job missing")
         return {
-            "job_id": job.job_id,
+            "run_id": job.run_id,
             "status": job.status,
             "result_table": job.result_table,
             "error": job.error,

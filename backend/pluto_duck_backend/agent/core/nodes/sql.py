@@ -26,8 +26,14 @@ def build_sql_node():
         response = await provider.ainvoke(prompt)
         state.working_sql = response.strip()
         state.add_message(MessageRole.ASSISTANT, f"Candidate SQL:\n{state.working_sql}")
+        _log("sql_generated", conversation_id=state.conversation_id, sql_preview=state.working_sql[:160])
         return state
 
     return sql_node
+
+
+def _log(message: str, **fields: object) -> None:
+    payload = " ".join(f"{key}={value}" for key, value in fields.items()) if fields else ""
+    print(f"[agent][sql] {message} {payload}")
 
 

@@ -29,35 +29,35 @@ class QueryExecutionManager:
         for worker in self._workers:
             worker.start()
 
-    def enqueue(self, job_id: str) -> None:
-        logger.debug("Enqueuing query job %s", job_id)
-        self._queue.put(job_id)
+    def enqueue(self, run_id: str) -> None:
+        logger.debug("Enqueuing query job %s", run_id)
+        self._queue.put(run_id)
 
-    def submit_sql(self, sql: str, job_id: Optional[str] = None) -> str:
+    def submit_sql(self, sql: str, run_id: Optional[str] = None) -> str:
         from uuid import uuid4
 
-        job_identifier = job_id or str(uuid4())
-        self.service.submit(job_identifier, sql)
-        self.enqueue(job_identifier)
-        return job_identifier
+        run_identifier = run_id or str(uuid4())
+        self.service.submit(run_identifier, sql)
+        self.enqueue(run_identifier)
+        return run_identifier
 
-    def wait_for(self, job_id: str, timeout: float = 10.0, poll_interval: float = 0.1):
+    def wait_for(self, run_id: str, timeout: float = 10.0, poll_interval: float = 0.1):
         deadline = time.time() + timeout
         while time.time() < deadline:
-            job = self.service.fetch(job_id)
+            job = self.service.fetch(run_id)
             if job and job.status != "pending":
                 return job
             time.sleep(poll_interval)
-        return self.service.fetch(job_id)
+        return self.service.fetch(run_id)
 
     def _worker(self) -> None:
         while True:
-            job_id = self._queue.get()
+            run_id = self._queue.get()
             try:
-                logger.debug("Executing queued query job %s", job_id)
-                self.service.execute(job_id)
+                logger.debug("Executing queued query job %s", run_id)
+                self.service.execute(run_id)
             except Exception:  # pragma: no cover - logging only
-                logger.exception("Query job %s failed during execution", job_id)
+                logger.exception("Query job %s failed during execution", run_id)
             finally:
                 self._queue.task_done()
 

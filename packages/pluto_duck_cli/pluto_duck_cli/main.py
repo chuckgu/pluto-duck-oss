@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import typer
+import uvicorn
 
 from pluto_duck_backend import __version__
 from pluto_duck_backend.agent.core.orchestrator import get_agent_manager, run_agent_once
@@ -56,12 +57,31 @@ app = typer.Typer(help="Local-first Pluto-Duck CLI")
 
 
 @app.command()
-def run(host: str = "127.0.0.1", port: int = 8000) -> None:
-    """Run the Pluto-Duck API server (stub)."""
+def run(
+    host: str = typer.Option("127.0.0.1", help="Host to bind the API server"),
+    port: int = typer.Option(8000, help="Port for the API server"),
+    reload: bool = typer.Option(
+        False,
+        "--reload",
+        "-r",
+        help="Enable auto-reload for development",
+        is_flag=True,
+    ),
+) -> None:
+    """Run the Pluto-Duck FastAPI server via uvicorn."""
 
     typer.echo(
-        "Pluto-Duck backend is not implemented yet. "
-        "This command will start the FastAPI server once available."
+        typer.style(
+            f"Starting Pluto-Duck backend on http://{host}:{port} (reload={reload})",
+            fg=typer.colors.GREEN,
+        )
+    )
+    uvicorn.run(
+        "pluto_duck_backend.app.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        factory=False,
     )
 
 
@@ -125,13 +145,13 @@ def query(sql: str = typer.Argument(..., help="SQL query to execute")) -> None:
     """Execute a SQL query."""
     settings = get_settings()
     manager = QueryExecutionManager(settings.duckdb.path)
-    job_id = manager.submit(sql)
-    typer.echo(f"Query submitted with job ID: {job_id}")
-    job = manager.fetch(job_id)
+    run_id = manager.submit(sql)
+    typer.echo(f"Query submitted with job ID: {run_id}")
+    job = manager.fetch(run_id)
     while job.status in {QueryJobStatus.PENDING, QueryJobStatus.RUNNING}:
-        typer.echo(f"Job {job_id} status: {job.status.value}...")
+        typer.echo(f"Job {run_id} status: {job.status.value}...")
         time.sleep(1)
-        job = manager.fetch(job_id)
+        job = manager.fetch(run_id)
 
     if job.status == QueryJobStatus.SUCCESS:
         typer.echo(f"Query completed. Result table: {job.result_table}")
@@ -158,8 +178,8 @@ def agent_stream(question: str = typer.Argument(..., help="Natural language ques
 
     async def _stream() -> None:
         manager = get_agent_manager()
-        run_id = manager.start_run(question)
-        typer.echo(f"Started run {run_id}. Streaming events...")
+        conversation_id, run_id = manager.start_run(question)
+        typer.echo(f"Started run {run_id} (conversation {conversation_id}). Streaming events...")
         async for event in manager.stream_events(run_id):
             typer.echo(event)
         final = await manager.get_result(run_id)

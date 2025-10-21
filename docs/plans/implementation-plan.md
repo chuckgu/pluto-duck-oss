@@ -30,8 +30,8 @@ Based on `.cursor/plans/pluto-duck-re-architecture-plan-9662a618.plan.md` and
 - Define Subject×Action catalog (logical tool names with descriptions) mapped to service methods.
 - Design FastAPI application (`app/api`) as thin adapters that call the services; expose endpoints:
   - `POST /api/v1/query`
-  - `GET /api/v1/query/{job_id}`
-  - `GET /api/v1/query/{job_id}/events`
+  - `GET /api/v1/query/{run_id}`
+  - `GET /api/v1/query/{run_id}/events`
   - `POST /api/v1/ingest`
   - `POST /api/v1/dbt/run`
 - Provide async background job runner (in-process queue) shared by API, CLI, and agent.

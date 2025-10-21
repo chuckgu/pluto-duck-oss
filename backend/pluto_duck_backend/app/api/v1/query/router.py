@@ -32,42 +32,42 @@ def submit_query(
     sql = payload.get("sql")
     if not sql:
         raise HTTPException(status_code=400, detail="sql field is required")
-    job_id = manager.submit_sql(sql)
-    job = manager.wait_for(job_id)
+    run_id = manager.submit_sql(sql)
+    job = manager.wait_for(run_id)
     if not job:
         raise HTTPException(status_code=500, detail="job missing")
     return {
-        "job_id": job.job_id,
+        "run_id": job.run_id,
         "status": job.status,
         "result_table": job.result_table,
     }
 
 
-@router.get("/{job_id}", response_model=dict)
-def get_query(job_id: str, service: QueryExecutionService = Depends(get_execution_service)) -> dict:
-    job = service.fetch(job_id)
+@router.get("/{run_id}", response_model=dict)
+def get_query(run_id: str, service: QueryExecutionService = Depends(get_execution_service)) -> dict:
+    job = service.fetch(run_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return {
-        "job_id": job.job_id,
+        "run_id": job.run_id,
         "status": job.status,
         "result_table": job.result_table,
         "error": job.error,
     }
 
 
-@router.get("/{job_id}/events")
+@router.get("/{run_id}/events")
 def stream_query_events(
-    job_id: str,
+    run_id: str,
     manager: QueryExecutionManager = Depends(get_execution_manager),
 ) -> StreamingResponse:
     def event_stream():
-        yield "data: " + json.dumps({"event": "started", "job_id": job_id}) + "\n\n"
-        job = manager.wait_for(job_id)
+        yield "data: " + json.dumps({"event": "started", "run_id": run_id}) + "\n\n"
+        job = manager.wait_for(run_id)
         if job:
             payload = {
                 "event": "completed",
-                "job_id": job.job_id,
+                "run_id": job.run_id,
                 "status": job.status,
                 "result_table": job.result_table,
                 "error": job.error,

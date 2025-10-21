@@ -20,7 +20,7 @@ class QueryJobStatus(str, Enum):
 
 @dataclass
 class QueryJob:
-    job_id: str
+    run_id: str
     sql: str
     submitted_at: datetime
     status: QueryJobStatus
@@ -57,54 +57,54 @@ class QueryExecutionService:
             if "rows_affected" not in columns:
                 con.execute("ALTER TABLE query_history ADD COLUMN rows_affected BIGINT")
 
-    def _sanitize_relation(self, job_id: str) -> str:
-        sanitized = "".join(ch for ch in job_id if ch.isalnum() or ch == "_")
+    def _sanitize_relation(self, run_id: str) -> str:
+        sanitized = "".join(ch for ch in run_id if ch.isalnum() or ch == "_")
         if not sanitized:
             sanitized = "result"
         return f"query_result_{sanitized}"
 
-    def submit(self, job_id: str, sql: str) -> QueryJob:
+    def submit(self, run_id: str, sql: str) -> QueryJob:
         submitted_at = datetime.now(UTC)
         with duckdb.connect(str(self.warehouse_path)) as con:
             con.execute(
                 "INSERT OR REPLACE INTO query_history (job_id, sql, status, submitted_at) VALUES (?, ?, ?, ?)",
-                [job_id, sql, QueryJobStatus.PENDING.value, submitted_at],
+                [run_id, sql, QueryJobStatus.PENDING.value, submitted_at],
             )
-        return QueryJob(job_id=job_id, sql=sql, status=QueryJobStatus.PENDING, submitted_at=submitted_at)
+        return QueryJob(run_id=run_id, sql=sql, status=QueryJobStatus.PENDING, submitted_at=submitted_at)
 
-    def execute(self, job_id: str) -> QueryJob:
+    def execute(self, run_id: str) -> QueryJob:
         with duckdb.connect(str(self.warehouse_path)) as con:
             row = con.execute(
                 "SELECT sql, submitted_at FROM query_history WHERE job_id = ?",
-                [job_id],
+                [run_id],
             ).fetchone()
             if not row:
-                raise ValueError(f"Unknown job_id {job_id}")
+                raise ValueError(f"Unknown run_id {run_id}")
             sql, submitted_at = row
             submitted_at = submitted_at.replace(tzinfo=UTC) if submitted_at.tzinfo is None else submitted_at
-            result_relation = self._sanitize_relation(job_id)
+            result_relation = self._sanitize_relation(run_id)
             try:
                 con.execute(f"CREATE OR REPLACE TABLE {result_relation} AS {sql}")
                 rows_affected = con.execute(f"SELECT COUNT(*) FROM {result_relation}").fetchone()[0]
                 completed_at = datetime.now(UTC)
                 con.execute(
                     "UPDATE query_history SET status=?, completed_at=?, result_relation=?, error=NULL, rows_affected=? WHERE job_id=?",
-                    [QueryJobStatus.SUCCESS.value, completed_at, result_relation, rows_affected, job_id],
+                    [QueryJobStatus.SUCCESS.value, completed_at, result_relation, rows_affected, run_id],
                 )
             except duckdb.Error as exc:
                 completed_at = datetime.now(UTC)
                 con.execute(
                     "UPDATE query_history SET status=?, completed_at=?, error=?, rows_affected=NULL WHERE job_id=?",
-                    [QueryJobStatus.FAILED.value, completed_at, str(exc), job_id],
+                    [QueryJobStatus.FAILED.value, completed_at, str(exc), run_id],
                 )
                 raise
-        return self.fetch(job_id)  # type: ignore[return-value]
+        return self.fetch(run_id)  # type: ignore[return-value]
 
-    def fetch(self, job_id: str) -> Optional[QueryJob]:
+    def fetch(self, run_id: str) -> Optional[QueryJob]:
         with duckdb.connect(str(self.warehouse_path)) as con:
             row = con.execute(
                 "SELECT job_id, sql, status, submitted_at, completed_at, result_relation, error, rows_affected FROM query_history WHERE job_id=?",
-                [job_id],
+                [run_id],
             ).fetchone()
         if not row:
             return None
@@ -116,7 +116,7 @@ class QueryExecutionService:
             completed_at = completed_at.replace(tzinfo=UTC)
         status = QueryJobStatus(row[2])
         return QueryJob(
-            job_id=row[0],
+            run_id=row[0],
             sql=row[1],
             status=status,
             submitted_at=submitted_at,

@@ -18,3 +18,6 @@ pluto_duck.egg-info
 
 next-fastapi-example/
 next-openai-example/
+
+frontend/pluto_duck_frontend/node_modules
+rontend/pluto_duck_frontend/.next

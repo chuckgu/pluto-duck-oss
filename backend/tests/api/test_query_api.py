@@ -37,10 +37,10 @@ def test_submit_and_fetch_query(tmp_path):
 
     response = client.post("/api/v1/query", json={"sql": "select 1 as value"})
     assert response.status_code == 200
-    job_id = response.json()["job_id"]
+    run_id = response.json()["run_id"]
 
-    fetch_response = client.get(f"/api/v1/query/{job_id}")
+    fetch_response = client.get(f"/api/v1/query/{run_id}")
     assert fetch_response.status_code == 200
-    stream_response = client.get(f"/api/v1/query/{job_id}/events")
+    stream_response = client.get(f"/api/v1/query/{run_id}/events")
     assert stream_response.status_code == 200
 
