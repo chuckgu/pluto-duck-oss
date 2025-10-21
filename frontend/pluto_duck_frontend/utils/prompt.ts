@@ -1,4 +1,4 @@
-import { appendMessage, createConversation, fetchChatSession, fetchChatSessions, type AppendMessageResponse, type ChatSessionDetail, type ChatSessionSummary } from '../lib/chatApi';
+import { appendMessage, createConversation, fetchChatSession, fetchChatSessions, type AppendMessageResponse, type ChatSessionDetail, type ChatSessionSummary, type CreateConversationResponse } from '../lib/chatApi';
 
 export interface PromptWorkflowState {
   sessions: ChatSessionSummary[];
