@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -327,7 +328,7 @@ class ChatRepository:
                 status=row[2],
                 created_at=self._ensure_utc(row[3]),
                 updated_at=self._ensure_utc(row[4]),
-                last_message_preview=row[5],
+                last_message_preview=self._normalize_preview_for_response(row[5]),
                 run_id=row[6],
             )
             for row in rows
@@ -351,7 +352,7 @@ class ChatRepository:
             status=row[2],
             created_at=self._ensure_utc(row[3]),
             updated_at=self._ensure_utc(row[4]),
-            last_message_preview=row[5],
+            last_message_preview=self._normalize_preview_for_response(row[5]),
             run_id=row[6],
         )
 
@@ -448,6 +449,65 @@ class ChatRepository:
                 return content["text"][:160]
             if "summary" in content and isinstance(content["summary"], str):
                 return content["summary"][:160]
+        return None
+
+    def _normalize_preview_for_response(self, preview: Optional[str]) -> Optional[str]:
+        if preview is None:
+            return None
+        stripped = preview.strip()
+        if not stripped:
+            return None
+        try:
+            parsed = json.loads(stripped)
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+        if isinstance(parsed, dict):
+            text = self._extract_text_from_object(parsed)
+            if text:
+                return text[:160]
+        pattern_order = [
+            r'"text"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"content"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+            r'"summary"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"',
+        ]
+        for pattern in pattern_order:
+            match = re.search(pattern, stripped)
+            if match:
+                extracted = bytes(match.group(1), "utf-8").decode("unicode_escape")
+                cleaned = extracted.strip()
+                if cleaned:
+                    return cleaned[:160]
+        return stripped[:160]
+
+    def _extract_text_from_object(self, value: Any) -> Optional[str]:
+        if isinstance(value, dict):
+            for key in ["final_answer", "answer", "text", "summary"]:
+                candidate = value.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    return candidate.strip()
+            content = value.get("content")
+            if isinstance(content, dict) or isinstance(content, list):
+                nested = self._extract_text_from_object(content)
+                if nested:
+                    return nested
+            messages = value.get("messages")
+            if isinstance(messages, list):
+                for message in messages:
+                    if isinstance(message, dict) and message.get("role") == "assistant":
+                        nested = self._extract_text_from_object(message)
+                        if nested:
+                            return nested
+                for message in messages:
+                    nested = self._extract_text_from_object(message)
+                    if nested:
+                        return nested
+        if isinstance(value, list):
+            for item in value:
+                nested = self._extract_text_from_object(item)
+                if nested:
+                    return nested
+        if isinstance(value, str) and value.strip():
+            return value.strip()
         return None
 
     def _ensure_utc(self, value: datetime) -> datetime:

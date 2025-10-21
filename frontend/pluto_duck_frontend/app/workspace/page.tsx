@@ -48,6 +48,92 @@ const suggestions = [
   'What are the latest orders?',
 ];
 
+const MAX_PREVIEW_LENGTH = 160;
+
+function extractTextFromUnknown(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      return extractTextFromUnknown(parsed);
+    } catch {
+      return trimmed;
+    }
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const result = extractTextFromUnknown(item);
+      if (result) return result;
+    }
+    return null;
+  }
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const directKeys = ['final_answer', 'answer', 'text', 'summary', 'message', 'preview'];
+    for (const key of directKeys) {
+      const candidate = obj[key];
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+      const nested = extractTextFromUnknown(candidate);
+      if (nested) return nested;
+    }
+    if (obj.content !== undefined) {
+      const contentText = extractTextFromUnknown(obj.content);
+      if (contentText) return contentText;
+    }
+    if (Array.isArray(obj.messages)) {
+      const assistantMessages = obj.messages.filter(
+        item => item && typeof item === 'object' && (item as any).role === 'assistant',
+      );
+      for (const message of assistantMessages) {
+        const preview = extractTextFromUnknown((message as any).content ?? message);
+        if (preview) return preview;
+      }
+      const fallback = extractTextFromUnknown(obj.messages);
+      if (fallback) return fallback;
+    }
+    for (const value of Object.values(obj)) {
+      const result = extractTextFromUnknown(value);
+      if (result) return result;
+    }
+  }
+  return null;
+}
+
+function coercePreviewText(value: unknown): string | null {
+  const text = extractTextFromUnknown(value);
+  if (!text) return null;
+  return text.length > MAX_PREVIEW_LENGTH ? text.slice(0, MAX_PREVIEW_LENGTH) : text;
+}
+
+function normalizePreview(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    const parsedText = coercePreviewText(parsed);
+    if (parsedText) return parsedText;
+  } catch {
+    // ignore parse errors
+  }
+  return coercePreviewText(trimmed);
+}
+
+function previewFromMessages(messages: ChatSessionDetail['messages'] | undefined): string | null {
+  if (!messages) return null;
+  for (const message of messages) {
+    if (message.role === 'assistant') {
+      const preview = coercePreviewText(message.content);
+      if (preview) return preview;
+    }
+  }
+  return null;
+}
+
 export default function WorkspacePage() {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(null);
@@ -66,6 +152,13 @@ export default function WorkspacePage() {
     autoReconnect: false,
   });
 
+  const updateSessionPreview = useCallback((sessionId: string, preview: string | null | undefined) => {
+    if (!preview) return;
+    setSessions(prev =>
+      prev.map(session => (session.id === sessionId ? { ...session, last_message_preview: preview } : session)),
+    );
+  }, []);
+
   const pickActiveRunId = useCallback((session: ChatSessionSummary | null | undefined) => {
     if (!session) return null;
     return session.status === 'active' ? session.run_id ?? null : null;
@@ -76,19 +169,23 @@ export default function WorkspacePage() {
       console.info('[Workspace] Loading sessions');
       const data = await fetchChatSessions();
       console.info('[Workspace] Sessions fetched', data);
-      setSessions(data);
+      const normalizedSessions = data.map(session => ({
+        ...session,
+        last_message_preview: normalizePreview(session.last_message_preview),
+      }));
+      setSessions(normalizedSessions);
       setActiveSession(prev => {
-        if (data.length === 0) {
+        if (normalizedSessions.length === 0) {
           console.info('[Workspace] No sessions found');
           setActiveRunId(null);
           return null;
         }
         if (!prev) {
-          console.info('[Workspace] Selecting first session', data[0]);
-          setActiveRunId(pickActiveRunId(data[0]));
-          return data[0];
+          console.info('[Workspace] Selecting first session', normalizedSessions[0]);
+          setActiveRunId(pickActiveRunId(normalizedSessions[0]));
+          return normalizedSessions[0];
         }
-        const match = data.find(session => session.id === prev.id);
+        const match = normalizedSessions.find(session => session.id === prev.id);
         console.info('[Workspace] Matching session result', match ?? prev);
         setActiveRunId(pickActiveRunId(match ?? prev));
         return match ?? prev;
@@ -128,11 +225,20 @@ export default function WorkspacePage() {
         const response = await fetchDetail(sessionId, true);
         if (!cancelled) {
           setDetail(response);
+          const detailPreview = previewFromMessages(response.messages);
+          if (detailPreview) {
+            updateSessionPreview(sessionId, detailPreview);
+          }
           const nextRunId = response.status === 'active' ? response.run_id ?? currentSession.run_id ?? null : null;
           setActiveRunId(nextRunId);
           setActiveSession(prev =>
             prev && prev.id === sessionId
-              ? { ...prev, run_id: response.run_id ?? prev.run_id, status: response.status }
+              ? {
+                  ...prev,
+                  run_id: response.run_id ?? prev.run_id,
+                  status: response.status,
+                  last_message_preview: detailPreview ?? prev.last_message_preview,
+                }
               : prev,
           );
         }
@@ -144,7 +250,7 @@ export default function WorkspacePage() {
     return () => {
       cancelled = true;
     };
-  }, [activeSession?.id, fetchDetail, isCreatingConversation]);
+  }, [activeSession?.id, fetchDetail, isCreatingConversation, updateSessionPreview]);
 
   const events = useMemo<AgentEventAny[]>(() => streamEvents, [streamEvents]);
   const reasoningEvents = useMemo(() => events.filter(e => e.type === 'reasoning'), [events]);
@@ -203,10 +309,19 @@ export default function WorkspacePage() {
           const currentSession = activeSession;
           const response = await fetchDetail(currentSession.id, true);
           setDetail(response);
+          const detailPreview = previewFromMessages(response.messages);
+          if (detailPreview) {
+            updateSessionPreview(currentSession.id, detailPreview);
+          }
           const nextRunId = response.status === 'active' ? response.run_id ?? activeRunId : null;
           setActiveSession(prev =>
             prev && prev.id === currentSession.id
-              ? { ...prev, run_id: response.run_id ?? prev.run_id, status: response.status }
+              ? {
+                  ...prev,
+                  run_id: response.run_id ?? prev.run_id,
+                  status: response.status,
+                  last_message_preview: detailPreview ?? prev.last_message_preview,
+                }
               : prev,
           );
           setActiveRunId(nextRunId);
@@ -218,15 +333,53 @@ export default function WorkspacePage() {
         }
       })();
     }
-  }, [activeSession, activeRunId, fetchDetail, loadSessions, streamEvents]);
+  }, [activeSession, activeRunId, fetchDetail, loadSessions, streamEvents, updateSessionPreview]);
 
-  const handleSelectSession = useCallback((session: ChatSessionSummary) => {
-    resetStream();
-    setIsCreatingConversation(false);
-    setDetail(null);
-    setActiveSession(session);
-    setActiveRunId(session.run_id ?? null);
-  }, [resetStream]);
+  const handleSelectSession = useCallback(
+    (session: ChatSessionSummary) => {
+      resetStream();
+      setIsCreatingConversation(false);
+      setActiveRunId(pickActiveRunId(session));
+      if (activeSession?.id === session.id) {
+        void (async () => {
+          try {
+            setLoading(true);
+            const response = await fetchDetail(session.id, true);
+            setDetail(response);
+            const detailPreview = previewFromMessages(response.messages);
+            if (detailPreview) {
+              updateSessionPreview(session.id, detailPreview);
+            }
+            const nextRunId = response.status === 'active' ? response.run_id ?? activeSession.run_id ?? null : null;
+            setActiveRunId(nextRunId);
+            setActiveSession(prev =>
+              prev && prev.id === session.id
+                ? {
+                    ...prev,
+                    status: response.status,
+                    run_id: response.run_id ?? prev.run_id,
+                    last_message_preview: detailPreview ?? prev.last_message_preview,
+                  }
+                : prev,
+            );
+          } catch (error) {
+            console.error('[Workspace] Failed to refresh session detail', error);
+          } finally {
+            setLoading(false);
+          }
+        })();
+        return;
+      }
+      setDetail(null);
+      const normalizedSelection: ChatSessionSummary = {
+        ...session,
+        last_message_preview: normalizePreview(session.last_message_preview),
+      };
+      setActiveSession(normalizedSelection);
+      setActiveRunId(pickActiveRunId(normalizedSelection));
+    },
+    [activeSession, fetchDetail, pickActiveRunId, resetStream, updateSessionPreview],
+  );
 
   const handleDeleteSession = useCallback(
     async (session: ChatSessionSummary) => {
@@ -276,7 +429,7 @@ export default function WorkspacePage() {
             status: 'active',
             created_at: nowIso,
             updated_at: nowIso,
-            last_message_preview: prompt ? prompt.slice(0, 160) : null,
+            last_message_preview: coercePreviewText(prompt),
             run_id: response.run_id,
             events_url: response.events_url,
           };
@@ -303,7 +456,7 @@ export default function WorkspacePage() {
                 run_id: response.run_id ?? prev.run_id,
                 status: 'active',
                 updated_at: new Date().toISOString(),
-                last_message_preview: prompt.slice(0, 160) || prev.last_message_preview,
+                last_message_preview: coercePreviewText(prompt) ?? prev.last_message_preview,
               }
             : prev,
         );

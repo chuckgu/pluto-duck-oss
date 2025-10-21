@@ -35,21 +35,18 @@ export function ConversationList({ sessions, activeId, onSelect, onDelete, loadi
               : 'border-border bg-card/40 hover:border-primary/40'
           }`}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
             <button
               type="button"
               onClick={() => onSelect?.(session)}
               className="flex-1 text-left"
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-foreground">{session.title || 'Untitled'}</span>
-                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {session.status}
-                </span>
+              <div className="space-y-1">
+                <span className="block font-semibold text-foreground">{session.title || 'Untitled'}</span>
+                {session.last_message_preview && (
+                  <p className="line-clamp-2 text-muted-foreground">{session.last_message_preview}</p>
+                )}
               </div>
-              {session.last_message_preview && (
-                <p className="mt-1 line-clamp-2 text-muted-foreground">{session.last_message_preview}</p>
-              )}
             </button>
             <button
               type="button"

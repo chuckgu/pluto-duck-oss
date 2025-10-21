@@ -147,6 +147,7 @@ class AgentRunManager:
             _log("run_failed", run_id=run.run_id, conversation_id=run.conversation_id, error=str(exc))
         finally:
             run.result = final_state
+            final_preview = run.flags.get("final_preview") or self._final_preview(final_state)
             end_event = AgentEvent(
                 type=EventType.RUN,
                 subtype=EventSubType.END,
@@ -157,7 +158,7 @@ class AgentRunManager:
             repo.mark_run_completed(
                 run.conversation_id,
                 status="failed" if "error" in final_state else "completed",
-                final_preview=self._final_preview(final_state),
+                final_preview=final_preview,
             )
             await run.queue.put(None)
             run.done.set()
@@ -233,6 +234,8 @@ class AgentRunManager:
             # Save only the final answer to DB, not the entire context
             repo = get_chat_repository()
             repo.append_message(run.conversation_id, "assistant", {"text": final_answer})
+            if isinstance(final_answer, str) and final_answer.strip():
+                run.flags["final_preview"] = final_answer.strip()[:160]
         return events
 
     def _final_preview(self, final_state: Dict[str, Any]) -> Optional[str]:
