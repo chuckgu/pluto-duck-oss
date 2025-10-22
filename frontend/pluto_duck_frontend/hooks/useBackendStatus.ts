@@ -16,16 +16,19 @@ export function useBackendStatus() {
         const healthy = await fetchBackendHealth();
         if (!cancelled) {
           setIsReady(healthy);
-          setIsChecking(false);
           
-          if (!healthy) {
-            // Retry after 2 seconds if not ready
+          if (healthy) {
+            // Only stop checking when backend is ready
+            setIsChecking(false);
+          } else {
+            // Keep checking indicator active during retries
             timeoutId = setTimeout(checkHealth, 2000);
           }
         }
       } catch {
         if (!cancelled) {
           setIsReady(false);
+          // Keep retrying
           timeoutId = setTimeout(checkHealth, 2000);
         }
       }

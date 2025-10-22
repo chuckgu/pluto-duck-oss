@@ -34,7 +34,7 @@ def build_reasoning_node():
         parsed = _parse_decision(response)
         decision = parsed["next"]
         if decision == "planner" and state.plan:
-            decision = route_after_reasoning(state)
+            decision = _auto_progress(state)
         state.add_message(MessageRole.REASONING, parsed["reason"])
         state.context["reasoning_decision"] = decision
         # Store final message if provided (for finalize node)
@@ -57,6 +57,10 @@ def route_after_reasoning(state: AgentState) -> str:
     decision = state.context.get("reasoning_decision")
     if decision:
         return decision
+    return _auto_progress(state)
+
+
+def _auto_progress(state: AgentState) -> str:
     if not state.plan:
         return "planner"
     if "schema_preview" not in state.context:
