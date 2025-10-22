@@ -3,7 +3,7 @@ export interface AgentRunResponse {
   events_url: string;
 }
 
-const DEFAULT_BACKEND_URL = 'http://localhost:8000';
+const DEFAULT_BACKEND_URL = '';
 
 export function getBackendUrl(): string {
   const base = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
@@ -12,7 +12,7 @@ export function getBackendUrl(): string {
 
 export async function fetchBackendHealth(signal?: AbortSignal): Promise<boolean> {
   try {
-    const response = await fetch(`${getBackendUrl()}/openapi.json`, { method: 'GET', signal });
+    const response = await fetch(`${getBackendUrl()}/health`, { method: 'GET', signal });
     return response.ok;
   } catch (error) {
     console.error('Health check failed', error);

@@ -1,6 +1,8 @@
 """Centralized configuration management for Pluto-Duck."""
 
 import os
+import shutil
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -10,7 +12,36 @@ from pydantic import BaseModel, Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-DEFAULT_DATA_ROOT = Path.home() / ".pluto-duck"
+def _default_data_root() -> Path:
+    """Return the platform-specific default data root."""
+
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "PlutoDuck"
+    return Path.home() / ".pluto-duck"
+
+
+DEFAULT_DATA_ROOT = _default_data_root()
+
+
+def _get_template_path() -> Path:
+    """Return the path to bundled templates."""
+    # This works both in dev and when packaged
+    return Path(__file__).parent.parent.parent / "templates"
+
+
+def _ensure_dbt_project(target_path: Path) -> None:
+    """Copy the bundled dbt template to target_path if it doesn't exist."""
+    if target_path.exists() and (target_path / "dbt_project.yml").exists():
+        # Project already exists, don't overwrite
+        return
+    
+    template_path = _get_template_path() / "dbt"
+    if not template_path.exists():
+        raise RuntimeError(f"DBT template not found at {template_path}")
+    
+    # Copy template to target
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(template_path, target_path, dirs_exist_ok=True)
 
 
 class DuckDBSettings(BaseModel):
@@ -56,11 +87,13 @@ class DataDirectory(BaseModel):
     root: Path = Field(default_factory=lambda: DEFAULT_DATA_ROOT)
     artifacts: Path = Field(default_factory=lambda: DEFAULT_DATA_ROOT / "artifacts")
     configs: Path = Field(default_factory=lambda: DEFAULT_DATA_ROOT / "configs")
+    logs: Path = Field(default_factory=lambda: DEFAULT_DATA_ROOT / "logs")
+    runtime: Path = Field(default_factory=lambda: DEFAULT_DATA_ROOT / "runtime")
 
     def ensure(self) -> None:
         """Create the necessary directories if they don't exist."""
 
-        for directory in {self.root, self.artifacts, self.configs}:
+        for directory in {self.root, self.artifacts, self.configs, self.logs, self.runtime}:
             directory.mkdir(parents=True, exist_ok=True)
 
 
@@ -98,6 +131,9 @@ class PlutoDuckSettings(BaseSettings):
             self.dbt.project_path = self.data_dir.root / "dbt"
         if self.dbt.profiles_path is None:
             self.dbt.profiles_path = self.data_dir.configs / "dbt_profiles"
+        
+        # Initialize dbt project from template if it doesn't exist
+        _ensure_dbt_project(self.dbt.project_path)
 
 
 @lru_cache(maxsize=1)

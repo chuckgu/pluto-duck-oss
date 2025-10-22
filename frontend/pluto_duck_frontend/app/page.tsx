@@ -39,6 +39,7 @@ import {
   type ChatSessionSummary,
 } from '../lib/chatApi';
 import { useAgentStream } from '../hooks/useAgentStream';
+import { useBackendStatus } from '../hooks/useBackendStatus';
 import type { AgentEventAny } from '../types/agent';
 
 const suggestions = [
@@ -135,6 +136,7 @@ function previewFromMessages(messages: ChatSessionDetail['messages'] | undefined
 }
 
 export default function WorkspacePage() {
+  const { isReady: backendReady, isChecking: backendChecking } = useBackendStatus();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(null);
   const [detail, setDetail] = useState<ChatSessionDetail | null>(null);
@@ -203,8 +205,10 @@ export default function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    void loadSessions();
-  }, [loadSessions]);
+    if (backendReady) {
+      void loadSessions();
+    }
+  }, [loadSessions, backendReady]);
 
   useEffect(() => {
     if (!activeSession) {
@@ -509,7 +513,22 @@ export default function WorkspacePage() {
     .join('\n\n');
 
   return (
-    <div className="flex h-screen w-full flex-1">
+    <div className="flex h-screen w-full flex-1 relative">
+      {/* Backend status overlay */}
+      {!backendReady && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="rounded-lg border bg-card p-8 text-center shadow-lg">
+            <Loader />
+            <p className="mt-4 text-sm font-medium text-muted-foreground">
+              {backendChecking ? 'Connecting to backend...' : 'Backend is starting...'}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Please wait while the backend initializes
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar conversation list */}
       <aside className="hidden w-80 border-r border-border bg-muted/20 px-4 py-6 lg:flex lg:flex-col">
         <div className="mb-3 flex items-center justify-between">

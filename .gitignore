@@ -21,3 +21,12 @@ next-openai-example/
 
 frontend/pluto_duck_frontend/node_modules
 rontend/pluto_duck_frontend/.next
+
+desktop
+desktop-tauri
+
+dist
+tauri-shell
+build
+
+.dev-data

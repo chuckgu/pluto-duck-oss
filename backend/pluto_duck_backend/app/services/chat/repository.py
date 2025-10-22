@@ -9,8 +9,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import duckdb
+import threading
 
 from pluto_duck_backend.app.core.config import get_settings
+
+_table_init_lock = threading.Lock()
 
 
 DDL_STATEMENTS = [
@@ -93,9 +96,10 @@ class ChatRepository:
         return duckdb.connect(str(self.warehouse_path))
 
     def _ensure_tables(self) -> None:
-        with self._connect() as con:
-            for statement in DDL_STATEMENTS:
-                con.execute(statement)
+        with _table_init_lock:
+            with self._connect() as con:
+                for statement in DDL_STATEMENTS:
+                    con.execute(statement)
 
     def new_conversation_id(self) -> str:
         from uuid import uuid4
