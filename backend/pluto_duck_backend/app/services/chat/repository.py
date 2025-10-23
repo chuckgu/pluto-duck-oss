@@ -18,8 +18,20 @@ _table_init_lock = threading.Lock()
 
 DDL_STATEMENTS = [
     """
+    CREATE TABLE IF NOT EXISTS projects (
+        id UUID PRIMARY KEY,
+        name VARCHAR NOT NULL,
+        description VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        settings JSON,
+        is_default BOOLEAN DEFAULT FALSE
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS agent_conversations (
         id UUID PRIMARY KEY,
+        project_id UUID,
         title VARCHAR,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -32,7 +44,7 @@ DDL_STATEMENTS = [
     """
     CREATE TABLE IF NOT EXISTS agent_messages (
         id UUID PRIMARY KEY,
-        conversation_id UUID REFERENCES agent_conversations(id),
+        conversation_id UUID,
         role VARCHAR NOT NULL,
         content JSON NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -43,7 +55,7 @@ DDL_STATEMENTS = [
     """
     CREATE TABLE IF NOT EXISTS agent_events (
         id UUID PRIMARY KEY,
-        conversation_id UUID REFERENCES agent_conversations(id),
+        conversation_id UUID,
         type VARCHAR NOT NULL,
         subtype VARCHAR,
         payload JSON,
@@ -60,6 +72,9 @@ DDL_STATEMENTS = [
     )
     """,
     """
+    CREATE INDEX IF NOT EXISTS idx_conversations_project ON agent_conversations(project_id, updated_at DESC)
+    """,
+    """
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON agent_messages(conversation_id, seq)
     """,
     """
@@ -71,7 +86,8 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "data_sources": None,
     "dbt_project": None,
     "ui_preferences": {"theme": "dark"},
-    "llm_provider": None,
+    "llm_provider": "openai",
+    "llm_model": "gpt-5-mini",
 }
 
 
@@ -89,7 +105,10 @@ class ConversationSummary:
 class ChatRepository:
     def __init__(self, warehouse_path: Path) -> None:
         self.warehouse_path = warehouse_path
+        # Ensure parent directory exists
+        self.warehouse_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_tables()
+        self._default_project_id = self._ensure_default_project()
         self.ensure_default_settings(DEFAULT_SETTINGS)
 
     def _connect(self) -> duckdb.DuckDBPyConnection:
@@ -100,6 +119,44 @@ class ChatRepository:
             with self._connect() as con:
                 for statement in DDL_STATEMENTS:
                     con.execute(statement)
+
+    def _ensure_default_project(self) -> str:
+        """Ensure a default project exists and return its ID."""
+        with self._connect() as con:
+            # Check if default project exists
+            row = con.execute(
+                "SELECT id FROM projects WHERE is_default = TRUE"
+            ).fetchone()
+            
+            if row:
+                return str(row[0])
+            
+            # Create default project
+            from uuid import uuid4
+            project_id = str(uuid4())
+            now = datetime.now(UTC)
+            con.execute(
+                """
+                INSERT INTO projects (id, name, description, is_default, created_at, updated_at, settings)
+                VALUES (?, ?, ?, TRUE, ?, ?, ?)
+                """,
+                [
+                    project_id,
+                    "Default Workspace",
+                    "Your primary workspace for data analysis",
+                    now,
+                    now,
+                    json.dumps({}),
+                ]
+            )
+            
+            # Migrate existing conversations to default project (if any)
+            con.execute(
+                "UPDATE agent_conversations SET project_id = ? WHERE project_id IS NULL",
+                [project_id]
+            )
+            
+            return project_id
 
     def new_conversation_id(self) -> str:
         from uuid import uuid4
@@ -129,11 +186,12 @@ class ChatRepository:
             
             con.execute(
                 """
-                INSERT INTO agent_conversations (id, title, created_at, updated_at, status, last_message_preview, run_id, metadata)
-                VALUES (?, ?, ?, ?, 'active', ?, ?, ?)
+                INSERT INTO agent_conversations (id, project_id, title, created_at, updated_at, status, last_message_preview, run_id, metadata)
+                VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
                 """,
                 [
                     conversation_id,
+                    self._default_project_id,
                     title,
                     now,
                     now,
@@ -413,6 +471,7 @@ class ChatRepository:
         return events
 
     def get_settings(self) -> Dict[str, Any]:
+        """Get global user settings."""
         with self._connect() as con:
             rows = con.execute("SELECT key, value FROM user_settings").fetchall()
         result: Dict[str, Any] = {}
@@ -423,6 +482,7 @@ class ChatRepository:
         return result
 
     def update_settings(self, payload: Dict[str, Any]) -> None:
+        """Update global user settings."""
         now = datetime.now(UTC)
         with self._connect() as con:
             for key, value in payload.items():

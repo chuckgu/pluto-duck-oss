@@ -42,6 +42,7 @@ export interface CreateConversationPayload {
   question?: string;
   metadata?: Record<string, unknown>;
   conversation_id?: string;
+  model?: string;
 }
 
 export interface CreateConversationResponse {
@@ -73,7 +74,7 @@ export interface AppendMessageResponse {
 
 export async function appendMessage(
   conversationId: string,
-  payload: { role: string; content: any },
+  payload: { role: string; content: any; model?: string },
 ): Promise<AppendMessageResponse> {
   const response = await fetch(`${getBackendUrl()}/api/v1/chat/sessions/${conversationId}/messages`, {
     method: 'POST',

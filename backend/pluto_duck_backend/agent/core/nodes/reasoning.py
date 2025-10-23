@@ -27,7 +27,7 @@ def build_reasoning_node():
     """Return an async function compatible with LangGraph nodes."""
 
     async def reasoning_node(state: AgentState) -> AgentState:
-        provider = get_llm_provider()
+        provider = get_llm_provider(model=state.model)
         master_prompt = try_load_prompt("master_prompt") or DEFAULT_MASTER_PROMPT
         prompt = _compose_prompt(state, master_prompt)
         response = await provider.ainvoke(prompt)

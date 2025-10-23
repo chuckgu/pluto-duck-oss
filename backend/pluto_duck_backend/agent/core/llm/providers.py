@@ -77,21 +77,54 @@ class OpenAILLMProvider(BaseLLMProvider):
         return ""
 
 
-def get_llm_provider(*, scripted_responses: Optional[Iterable[str]] = None) -> BaseLLMProvider:
-    """Return an LLM provider configured via `PlutoDuckSettings`."""
+def get_llm_provider(
+    *,
+    scripted_responses: Optional[Iterable[str]] = None,
+    model: Optional[str] = None,
+) -> BaseLLMProvider:
+    """Return an LLM provider configured via `PlutoDuckSettings`.
+    
+    Args:
+        scripted_responses: Optional test responses for MockLLMProvider
+        model: Optional model override for this specific request
+    """
 
     if scripted_responses is not None:
         return MockLLMProvider(scripted_responses)
 
     settings = get_settings()
-    if settings.agent.mock_mode or not settings.agent.api_key:
+    
+    # Get API key: env var > database settings
+    api_key = settings.agent.api_key
+    if not api_key:
+        # Try to load from database
+        try:
+            from pluto_duck_backend.app.services.chat import get_chat_repository
+            repo = get_chat_repository()
+            db_settings = repo.get_settings()
+            api_key = db_settings.get("llm_api_key")
+        except Exception:
+            pass  # If DB is not available, continue with None
+    
+    # Get model: parameter > env var > database settings > default
+    resolved_model = model or settings.agent.model
+    if not resolved_model:
+        try:
+            from pluto_duck_backend.app.services.chat import get_chat_repository
+            repo = get_chat_repository()
+            db_settings = repo.get_settings()
+            resolved_model = db_settings.get("llm_model") or "gpt-5-mini"
+        except Exception:
+            resolved_model = "gpt-5-mini"
+    
+    if settings.agent.mock_mode or not api_key:
         return MockLLMProvider()
 
     provider_name = (settings.agent.provider or "openai").lower()
     if provider_name == "openai":
         return OpenAILLMProvider(
-            api_key=settings.agent.api_key,
-            model=settings.agent.model,
+            api_key=api_key,
+            model=resolved_model,
             api_base=settings.agent.api_base,
         )
 

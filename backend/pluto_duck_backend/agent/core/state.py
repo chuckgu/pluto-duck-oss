@@ -49,6 +49,7 @@ class AgentState:
     working_sql: Optional[str] = None
     verification_result: Optional[Dict[str, Any]] = None
     context: Dict[str, Any] = field(default_factory=dict)
+    model: Optional[str] = None
 
     def add_message(
         self,
@@ -95,6 +96,7 @@ class AgentState:
             "working_sql": self.working_sql,
             "verification_result": self.verification_result,
             "context": self.context,
+            "model": self.model,
         }
 
 

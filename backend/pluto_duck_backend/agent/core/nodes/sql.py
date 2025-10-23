@@ -16,7 +16,7 @@ def build_sql_node():
     prompt_template = try_load_prompt("sql_prompt") or DEFAULT_SQL_PROMPT
 
     async def sql_node(state: AgentState) -> AgentState:
-        provider = get_llm_provider()
+        provider = get_llm_provider(model=state.model)
         prompt = (
             f"{prompt_template}\n"
             f"User question: {state.user_query}\n"

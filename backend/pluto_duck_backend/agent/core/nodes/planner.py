@@ -18,7 +18,7 @@ def build_planner_node():
     prompt_template = try_load_prompt("planner_prompt") or _DEFAULT_PROMPT
 
     async def planner_node(state: AgentState) -> AgentState:
-        provider = get_llm_provider()
+        provider = get_llm_provider(model=state.model)
         prompt = f"{prompt_template}\nUser: {state.user_query}"
         response = await provider.ainvoke(prompt)
         steps = _parse_steps(response)

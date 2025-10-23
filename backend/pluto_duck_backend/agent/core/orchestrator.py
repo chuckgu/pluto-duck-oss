@@ -68,10 +68,11 @@ def safe_dump_event(event: Dict[str, Any]) -> str:
 
 
 class AgentRun:
-    def __init__(self, run_id: str, conversation_id: str, question: str) -> None:
+    def __init__(self, run_id: str, conversation_id: str, question: str, model: Optional[str] = None) -> None:
         self.run_id = run_id
         self.conversation_id = conversation_id
         self.question = question
+        self.model = model
         self.queue: asyncio.Queue[Optional[Dict[str, Any]]] = asyncio.Queue()
         self.done = asyncio.Event()
         self.result: Optional[Dict[str, Any]] = None
@@ -82,9 +83,9 @@ class AgentRunManager:
     def __init__(self) -> None:
         self._runs: Dict[str, AgentRun] = {}
 
-    def start_run(self, question: str) -> tuple[str, str]:
+    def start_run(self, question: str, model: Optional[str] = None) -> tuple[str, str]:
         conversation_id = str(uuid4())
-        run_id = self.start_run_for_conversation(conversation_id, question, create_if_missing=True)
+        run_id = self.start_run_for_conversation(conversation_id, question, model=model, create_if_missing=True)
         return conversation_id, run_id
 
     def start_run_for_conversation(
@@ -92,6 +93,7 @@ class AgentRunManager:
         conversation_id: str,
         question: str,
         *,
+        model: Optional[str] = None,
         create_if_missing: bool = False,
     ) -> str:
         repo = get_chat_repository()
@@ -103,7 +105,7 @@ class AgentRunManager:
             repo.create_conversation(conversation_id, question)
 
         run_id = str(uuid4())
-        run = AgentRun(run_id, conversation_id, question)
+        run = AgentRun(run_id, conversation_id, question, model=model)
         self._runs[run_id] = run
         _log("run_started", run_id=run_id, conversation_id=conversation_id)
         repo.append_message(conversation_id, "user", {"text": question})
@@ -114,7 +116,7 @@ class AgentRunManager:
 
     async def _execute_run(self, run: AgentRun) -> None:
         graph = build_agent_graph()
-        state = AgentState(conversation_id=run.conversation_id, user_query=run.question)
+        state = AgentState(conversation_id=run.conversation_id, user_query=run.question, model=run.model)
         state.add_message(MessageRole.USER, run.question)
         repo = get_chat_repository()
 
@@ -278,9 +280,9 @@ def get_agent_manager() -> AgentRunManager:
     return _AGENT_MANAGER
 
 
-async def run_agent_once(question: str) -> Dict[str, Any]:
+async def run_agent_once(question: str, model: Optional[str] = None) -> Dict[str, Any]:
     graph = build_agent_graph()
-    state = AgentState(conversation_id=str(uuid4()), user_query=question)
+    state = AgentState(conversation_id=str(uuid4()), user_query=question, model=model)
     state.add_message(MessageRole.USER, question)
     final_state: Dict[str, Any] = {}
     async for chunk in graph.astream(state, stream_mode=["updates", "values"]):

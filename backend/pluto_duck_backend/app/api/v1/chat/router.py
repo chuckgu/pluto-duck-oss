@@ -35,6 +35,7 @@ class CreateConversationRequest(BaseModel):
   question: Optional[str] = None
   metadata: Optional[Dict[str, Any]] = None
   conversation_id: Optional[str] = None
+  model: Optional[str] = None
 
 
 class CreateConversationResponse(BaseModel):
@@ -47,6 +48,7 @@ class CreateConversationResponse(BaseModel):
 class AppendMessageRequest(BaseModel):
   role: str
   content: Dict[str, Any]
+  model: Optional[str] = None
 
 
 class AppendMessageResponse(BaseModel):
@@ -103,7 +105,7 @@ async def create_conversation(
   manager = get_agent_manager()
   if payload.question and payload.conversation_id:
     try:
-      run_id = manager.start_run_for_conversation(payload.conversation_id, payload.question)
+      run_id = manager.start_run_for_conversation(payload.conversation_id, payload.question, model=payload.model)
       return CreateConversationResponse(
         id=payload.conversation_id,
         run_id=run_id,
@@ -114,8 +116,12 @@ async def create_conversation(
       raise HTTPException(status_code=404, detail="Conversation not found") from exc
 
   if payload.question:
-    conversation_id, run_id = manager.start_run(payload.question)
-    repo.create_conversation(conversation_id, payload.question, payload.metadata)
+    conversation_id, run_id = manager.start_run(payload.question, model=payload.model)
+    # Include model in metadata
+    metadata = payload.metadata or {}
+    if payload.model:
+      metadata["model"] = payload.model
+    repo.create_conversation(conversation_id, payload.question, metadata)
     return CreateConversationResponse(id=conversation_id, run_id=run_id, events_url=f"/api/v1/agent/{run_id}/events", conversation_id=conversation_id)
 
   conversation_id = payload.conversation_id or repo._generate_uuid()  # type: ignore[attr-defined]
@@ -154,7 +160,7 @@ async def append_message(
   manager = get_agent_manager()
   if payload.role.lower() == "user":
     try:
-      run_id = manager.start_run_for_conversation(conversation_id, payload.content.get("text", ""))
+      run_id = manager.start_run_for_conversation(conversation_id, payload.content.get("text", ""), model=payload.model)
     except KeyError as exc:
       raise HTTPException(status_code=404, detail="Conversation not found") from exc
     return AppendMessageResponse(status="queued", run_id=run_id, events_url=f"/api/v1/agent/{run_id}/events", conversation_id=conversation_id)

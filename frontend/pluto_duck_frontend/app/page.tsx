@@ -1,9 +1,9 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CopyIcon, RefreshCcwIcon } from 'lucide-react';
+import { CopyIcon, RefreshCcwIcon, PlusIcon, SettingsIcon } from 'lucide-react';
 
-import { ConversationList } from '../components/chat';
+import { ConversationList, SettingsModal } from '../components/chat';
 import {
   Conversation,
   ConversationContent,
@@ -21,6 +21,11 @@ import {
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTools,
+  PromptInputModelSelect,
+  PromptInputModelSelectTrigger,
+  PromptInputModelSelectValue,
+  PromptInputModelSelectContent,
+  PromptInputModelSelectItem,
   Actions,
   Action,
   Loader,
@@ -38,6 +43,7 @@ import {
   type ChatSessionDetail,
   type ChatSessionSummary,
 } from '../lib/chatApi';
+import { fetchSettings } from '../lib/settingsApi';
 import { useAgentStream } from '../hooks/useAgentStream';
 import { useBackendStatus } from '../hooks/useBackendStatus';
 import type { AgentEventAny } from '../types/agent';
@@ -46,7 +52,11 @@ const suggestions = [
   'Show me top 5 products by revenue',
   'List customers from last month',
   'Analyze sales trends by region',
-  'What are the latest orders?',
+];
+
+const MODELS = [
+  { id: 'gpt-5', name: 'GPT-5' },
+  { id: 'gpt-5-mini', name: 'GPT-5 Mini' },
 ];
 
 const MAX_PREVIEW_LENGTH = 160;
@@ -142,6 +152,8 @@ export default function WorkspacePage() {
   const [detail, setDetail] = useState<ChatSessionDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gpt-5-mini');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -203,6 +215,22 @@ export default function WorkspacePage() {
     console.info('[Workspace] Session detail response', response);
     return response;
   }, []);
+
+  // Load default model from settings
+  useEffect(() => {
+    if (backendReady) {
+      void (async () => {
+        try {
+          const settings = await fetchSettings();
+          if (settings.llm_model) {
+            setSelectedModel(settings.llm_model);
+          }
+        } catch (error) {
+          console.error('Failed to load default model from settings', error);
+        }
+      })();
+    }
+  }, [backendReady]);
 
   useEffect(() => {
     if (backendReady) {
@@ -424,7 +452,7 @@ export default function WorkspacePage() {
         if (!activeSession) {
           console.info('[Workspace] Creating conversation for prompt', prompt);
           setIsCreatingConversation(false);
-          const response = await createConversation({ question: prompt });
+          const response = await createConversation({ question: prompt, model: selectedModel });
           console.info('[Workspace] Conversation created', response);
           const nowIso = new Date().toISOString();
           const newSession: ChatSessionSummary = {
@@ -449,7 +477,7 @@ export default function WorkspacePage() {
 
         console.info('[Workspace] Appending message to existing conversation', activeSession.id);
         const currentSession = activeSession;
-        const response: AppendMessageResponse = await appendMessage(currentSession.id, { role: 'user', content: { text: prompt } });
+        const response: AppendMessageResponse = await appendMessage(currentSession.id, { role: 'user', content: { text: prompt }, model: selectedModel });
         console.info('[Workspace] Follow-up queued', response);
         const nextRunId = response.run_id ?? currentSession.run_id ?? null;
         setActiveRunId(nextRunId);
@@ -486,7 +514,7 @@ export default function WorkspacePage() {
         console.error('Failed to submit message', error);
       }
     },
-    [activeSession, createConversation, loadSessions, resetStream],
+    [activeSession, selectedModel, loadSessions, resetStream],
   );
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -531,32 +559,53 @@ export default function WorkspacePage() {
 
       {/* Sidebar conversation list */}
       <aside className="hidden w-80 border-r border-border bg-muted/20 px-4 py-6 lg:flex lg:flex-col">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Conversations</h2>
+        {/* Top action buttons */}
+        <div className="mb-4 flex items-center justify-end gap-2">
           <button
             type="button"
-            className="text-xs font-medium text-primary hover:text-primary/80"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card hover:bg-accent"
             onClick={() => void loadSessions()}
+            title="Refresh"
           >
-            Refresh
+            <RefreshCcwIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+            onClick={handleNewConversation}
+            title="New conversation"
+          >
+            <PlusIcon className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
           <ConversationList sessions={sessions} activeId={activeSession?.id} onSelect={handleSelectSession} onDelete={handleDeleteSession} />
         </div>
+
+        {/* Settings button at bottom */}
         <button
           type="button"
-          className="mt-4 w-full rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/20"
-          onClick={handleNewConversation}
+          className="mt-4 flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent"
+          onClick={() => setSettingsOpen(true)}
         >
-          New conversation
+          <SettingsIcon className="h-4 w-4" />
+          <span>Settings</span>
         </button>
       </aside>
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen}
+        onSettingsSaved={(model) => setSelectedModel(model)}
+      />
 
       {/* Main chat area */}
       <div className="relative flex size-full flex-col divide-y overflow-hidden bg-muted/5">
         <Conversation>
-          <ConversationContent>
+          <ConversationContent className="flex flex-col min-h-full">
             {loading && (
               <div className="px-4 py-6">
                 <div className="mx-auto max-w-3xl">
@@ -644,10 +693,17 @@ export default function WorkspacePage() {
             {/* Empty state */}
             {!loading && messages.length === 0 && (
               <div className="flex flex-1 items-center justify-center px-4">
-                <div className="mx-auto max-w-3xl">
+                <div className="mx-auto max-w-3xl text-center space-y-6">
                   <p className="text-sm text-muted-foreground">
                     {activeSession ? 'No messages yet.' : 'Start a new conversation below.'}
                   </p>
+                  {!activeSession && (
+                    <Suggestions className="mx-auto max-w-3xl">
+                      {suggestions.map(suggestion => (
+                        <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
+                      ))}
+                    </Suggestions>
+                  )}
                 </div>
               </div>
             )}
@@ -655,17 +711,8 @@ export default function WorkspacePage() {
           <ConversationScrollButton />
         </Conversation>
 
-        {/* Input area with suggestions */}
+        {/* Input area */}
         <div className="grid shrink-0 gap-4 pt-4">
-          {messages.length === 0 && (
-            <div className="px-4">
-              <Suggestions className="mx-auto max-w-3xl">
-                {suggestions.map(suggestion => (
-                  <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
-                ))}
-              </Suggestions>
-            </div>
-          )}
           <div className="w-full px-4 pb-4">
             <div className="mx-auto max-w-3xl">
               <PromptInput onSubmit={handleSubmit}>
@@ -678,7 +725,20 @@ export default function WorkspacePage() {
                   />
                 </PromptInputBody>
                 <PromptInputFooter>
-                  <PromptInputTools />
+                  <PromptInputTools>
+                    <PromptInputModelSelect value={selectedModel} onValueChange={setSelectedModel}>
+                      <PromptInputModelSelectTrigger>
+                        <PromptInputModelSelectValue />
+                      </PromptInputModelSelectTrigger>
+                      <PromptInputModelSelectContent>
+                        {MODELS.map(model => (
+                          <PromptInputModelSelectItem key={model.id} value={model.id}>
+                            {model.name}
+                          </PromptInputModelSelectItem>
+                        ))}
+                      </PromptInputModelSelectContent>
+                    </PromptInputModelSelect>
+                  </PromptInputTools>
                   <PromptInputSubmit disabled={!input.trim() || isStreaming} status={status} />
                 </PromptInputFooter>
               </PromptInput>
