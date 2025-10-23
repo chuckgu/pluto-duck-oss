@@ -80,6 +80,30 @@ DDL_STATEMENTS = [
     """
     CREATE INDEX IF NOT EXISTS idx_events_conversation ON agent_events(conversation_id, timestamp)
     """,
+    """
+    CREATE TABLE IF NOT EXISTS data_sources (
+        id UUID PRIMARY KEY,
+        project_id UUID,
+        name VARCHAR NOT NULL,
+        description VARCHAR,
+        connector_type VARCHAR NOT NULL,
+        source_config JSON NOT NULL,
+        target_table VARCHAR NOT NULL,
+        rows_count INTEGER,
+        status VARCHAR DEFAULT 'active',
+        last_imported_at TIMESTAMP,
+        error_message VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        metadata JSON
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_sources_project ON data_sources(project_id, updated_at DESC)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_sources_table ON data_sources(target_table)
+    """,
 ]
 
 DEFAULT_SETTINGS: Dict[str, Any] = {

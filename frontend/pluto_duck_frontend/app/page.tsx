@@ -1,9 +1,16 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CopyIcon, RefreshCcwIcon, PlusIcon, SettingsIcon } from 'lucide-react';
+import { CopyIcon, RefreshCcwIcon, PlusIcon, SettingsIcon, DatabaseIcon } from 'lucide-react';
 
 import { ConversationList, SettingsModal } from '../components/chat';
+import {
+  DataSourcesView,
+  ImportCSVModal,
+  ImportParquetModal,
+  ImportPostgresModal,
+  ImportSQLiteModal,
+} from '../components/data-sources';
 import {
   Conversation,
   ConversationContent,
@@ -44,6 +51,7 @@ import {
   type ChatSessionSummary,
 } from '../lib/chatApi';
 import { fetchSettings } from '../lib/settingsApi';
+import { fetchDataSources, type DataSource } from '../lib/dataSourcesApi';
 import { useAgentStream } from '../hooks/useAgentStream';
 import { useBackendStatus } from '../hooks/useBackendStatus';
 import type { AgentEventAny } from '../types/agent';
@@ -52,6 +60,7 @@ const suggestions = [
   'Show me top 5 products by revenue',
   'List customers from last month',
   'Analyze sales trends by region',
+  'What are the latest orders?',
 ];
 
 const MODELS = [
@@ -60,6 +69,8 @@ const MODELS = [
 ];
 
 const MAX_PREVIEW_LENGTH = 160;
+
+type ViewMode = 'chat' | 'data-sources';
 
 function extractTextFromUnknown(value: unknown): string | null {
   if (value == null) return null;
@@ -147,6 +158,7 @@ function previewFromMessages(messages: ChatSessionDetail['messages'] | undefined
 
 export default function WorkspacePage() {
   const { isReady: backendReady, isChecking: backendChecking } = useBackendStatus();
+  const [currentView, setCurrentView] = useState<ViewMode>('chat');
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSession, setActiveSession] = useState<ChatSessionSummary | null>(null);
   const [detail, setDetail] = useState<ChatSessionDetail | null>(null);
@@ -154,6 +166,13 @@ export default function WorkspacePage() {
   const [input, setInput] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState('gpt-5-mini');
+  const [selectedDataSource, setSelectedDataSource] = useState('all');
+  const [dataSources, setDataSources] = useState<DataSource[]>([]);
+  const [importCSVOpen, setImportCSVOpen] = useState(false);
+  const [importParquetOpen, setImportParquetOpen] = useState(false);
+  const [importPostgresOpen, setImportPostgresOpen] = useState(false);
+  const [importSQLiteOpen, setImportSQLiteOpen] = useState(false);
+  const [dataSourcesRefresh, setDataSourcesRefresh] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -216,7 +235,7 @@ export default function WorkspacePage() {
     return response;
   }, []);
 
-  // Load default model from settings
+  // Load default model from settings and data sources
   useEffect(() => {
     if (backendReady) {
       void (async () => {
@@ -227,6 +246,13 @@ export default function WorkspacePage() {
           }
         } catch (error) {
           console.error('Failed to load default model from settings', error);
+        }
+        
+        try {
+          const sources = await fetchDataSources();
+          setDataSources(sources);
+        } catch (error) {
+          console.error('Failed to load data sources', error);
         }
       })();
     }
@@ -369,6 +395,7 @@ export default function WorkspacePage() {
 
   const handleSelectSession = useCallback(
     (session: ChatSessionSummary) => {
+      setCurrentView('chat');
       resetStream();
       setIsCreatingConversation(false);
       setActiveRunId(pickActiveRunId(session));
@@ -432,6 +459,7 @@ export default function WorkspacePage() {
   );
 
   const handleNewConversation = useCallback(() => {
+    setCurrentView('chat');
     setActiveSession(null);
     setActiveRunId(null);
     setDetail(null);
@@ -452,7 +480,17 @@ export default function WorkspacePage() {
         if (!activeSession) {
           console.info('[Workspace] Creating conversation for prompt', prompt);
           setIsCreatingConversation(false);
-          const response = await createConversation({ question: prompt, model: selectedModel });
+          
+          const metadata: Record<string, any> = { model: selectedModel };
+          if (selectedDataSource && selectedDataSource !== 'all') {
+            metadata.data_source = selectedDataSource;
+          }
+          
+          const response = await createConversation({ 
+            question: prompt, 
+            model: selectedModel,
+            metadata,
+          });
           console.info('[Workspace] Conversation created', response);
           const nowIso = new Date().toISOString();
           const newSession: ChatSessionSummary = {
@@ -530,6 +568,39 @@ export default function WorkspacePage() {
     void navigator.clipboard.writeText(text);
   }, []);
 
+  const handleImportClick = useCallback((connectorType: string) => {
+    switch (connectorType) {
+      case 'csv':
+        setImportCSVOpen(true);
+        break;
+      case 'parquet':
+        setImportParquetOpen(true);
+        break;
+      case 'postgres':
+        setImportPostgresOpen(true);
+        break;
+      case 'sqlite':
+        setImportSQLiteOpen(true);
+        break;
+      default:
+        console.error('Unknown connector type:', connectorType);
+    }
+  }, []);
+
+  const handleImportSuccess = useCallback(() => {
+    // Trigger refresh of data sources list
+    setDataSourcesRefresh(prev => prev + 1);
+    // Reload data sources for dropdown
+    void (async () => {
+      try {
+        const sources = await fetchDataSources();
+        setDataSources(sources);
+      } catch (error) {
+        console.error('Failed to reload data sources', error);
+      }
+    })();
+  }, []);
+
   const messages = detail?.messages || [];
   const hasReasoning = reasoningEvents.length > 0;
   const reasoningText = reasoningEvents
@@ -584,15 +655,29 @@ export default function WorkspacePage() {
           <ConversationList sessions={sessions} activeId={activeSession?.id} onSelect={handleSelectSession} onDelete={handleDeleteSession} />
         </div>
 
-        {/* Settings button at bottom */}
-        <button
-          type="button"
-          className="mt-4 flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <SettingsIcon className="h-4 w-4" />
-          <span>Settings</span>
-        </button>
+        {/* Bottom buttons */}
+        <div className="mt-4 space-y-2">
+          <button
+            type="button"
+            className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+              currentView === 'data-sources'
+                ? 'border-primary/60 bg-primary/10 text-primary'
+                : 'border-border bg-card hover:bg-accent'
+            }`}
+            onClick={() => setCurrentView('data-sources')}
+          >
+            <DatabaseIcon className="h-4 w-4" />
+            <span>Data Sources</span>
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-accent"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <SettingsIcon className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
+        </div>
       </aside>
 
       {/* Settings Modal */}
@@ -602,10 +687,38 @@ export default function WorkspacePage() {
         onSettingsSaved={(model) => setSelectedModel(model)}
       />
 
-      {/* Main chat area */}
-      <div className="relative flex size-full flex-col divide-y overflow-hidden bg-muted/5">
+      {/* Import Modals */}
+      <ImportCSVModal
+        open={importCSVOpen}
+        onOpenChange={setImportCSVOpen}
+        onImportSuccess={handleImportSuccess}
+      />
+      <ImportParquetModal
+        open={importParquetOpen}
+        onOpenChange={setImportParquetOpen}
+        onImportSuccess={handleImportSuccess}
+      />
+      <ImportPostgresModal
+        open={importPostgresOpen}
+        onOpenChange={setImportPostgresOpen}
+        onImportSuccess={handleImportSuccess}
+      />
+      <ImportSQLiteModal
+        open={importSQLiteOpen}
+        onOpenChange={setImportSQLiteOpen}
+        onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Main content area - view switching */}
+      {currentView === 'data-sources' ? (
+        <DataSourcesView 
+          onImportClick={handleImportClick}
+          refreshTrigger={dataSourcesRefresh}
+        />
+      ) : (
+        <div className="relative flex size-full flex-col divide-y overflow-hidden bg-muted/5">
         <Conversation>
-          <ConversationContent className="flex flex-col min-h-full">
+          <ConversationContent>
             {loading && (
               <div className="px-4 py-6">
                 <div className="mx-auto max-w-3xl">
@@ -693,17 +806,10 @@ export default function WorkspacePage() {
             {/* Empty state */}
             {!loading && messages.length === 0 && (
               <div className="flex flex-1 items-center justify-center px-4">
-                <div className="mx-auto max-w-3xl text-center space-y-6">
+                <div className="mx-auto max-w-3xl">
                   <p className="text-sm text-muted-foreground">
                     {activeSession ? 'No messages yet.' : 'Start a new conversation below.'}
                   </p>
-                  {!activeSession && (
-                    <Suggestions className="mx-auto max-w-3xl">
-                      {suggestions.map(suggestion => (
-                        <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
-                      ))}
-                    </Suggestions>
-                  )}
                 </div>
               </div>
             )}
@@ -711,8 +817,17 @@ export default function WorkspacePage() {
           <ConversationScrollButton />
         </Conversation>
 
-        {/* Input area */}
+        {/* Input area with suggestions */}
         <div className="grid shrink-0 gap-4 pt-4">
+          {messages.length === 0 && (
+            <div className="px-4">
+              <Suggestions className="mx-auto max-w-3xl">
+                {suggestions.map(suggestion => (
+                  <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
+                ))}
+              </Suggestions>
+            </div>
+          )}
           <div className="w-full px-4 pb-4">
             <div className="mx-auto max-w-3xl">
               <PromptInput onSubmit={handleSubmit}>
@@ -726,6 +841,7 @@ export default function WorkspacePage() {
                 </PromptInputBody>
                 <PromptInputFooter>
                   <PromptInputTools>
+                    {/* Model selection */}
                     <PromptInputModelSelect value={selectedModel} onValueChange={setSelectedModel}>
                       <PromptInputModelSelectTrigger>
                         <PromptInputModelSelectValue />
@@ -738,6 +854,21 @@ export default function WorkspacePage() {
                         ))}
                       </PromptInputModelSelectContent>
                     </PromptInputModelSelect>
+                    
+                    {/* Data source selection */}
+                    <PromptInputModelSelect value={selectedDataSource} onValueChange={setSelectedDataSource}>
+                      <PromptInputModelSelectTrigger>
+                        <PromptInputModelSelectValue placeholder="All sources" />
+                      </PromptInputModelSelectTrigger>
+                      <PromptInputModelSelectContent>
+                        <PromptInputModelSelectItem value="all">All sources</PromptInputModelSelectItem>
+                        {dataSources.map(source => (
+                          <PromptInputModelSelectItem key={source.id} value={source.target_table}>
+                            {source.target_table}
+                          </PromptInputModelSelectItem>
+                        ))}
+                      </PromptInputModelSelectContent>
+                    </PromptInputModelSelect>
                   </PromptInputTools>
                   <PromptInputSubmit disabled={!input.trim() || isStreaming} status={status} />
                 </PromptInputFooter>
@@ -746,6 +877,7 @@ export default function WorkspacePage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
