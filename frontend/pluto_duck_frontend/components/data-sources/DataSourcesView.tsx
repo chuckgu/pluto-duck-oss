@@ -34,10 +34,6 @@ export function DataSourcesView({ onImportClick, refreshTrigger }: DataSourcesVi
   }, [refreshTrigger]);
 
   const handleDelete = async (sourceId: string) => {
-    if (!confirm('Are you sure you want to delete this data source? The DuckDB table will remain.')) {
-      return;
-    }
-    
     try {
       await deleteDataSource(sourceId, false); // Don't drop table by default
       await loadSources();

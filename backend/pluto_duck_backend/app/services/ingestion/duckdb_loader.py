@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List
 
 import duckdb
-import pyarrow as pa
+import pandas as pd
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -31,15 +31,17 @@ class DuckDBLoader:
         if not rows_list:
             return 0
 
-        table = pa.Table.from_pylist(rows_list)
+        # Use pandas DataFrame for better type handling
+        df = pd.DataFrame(rows_list)
+        
         con = duckdb.connect(str(self.database_path))
         try:
-            con.register("tmp_ingest", table)
             safe_table = _quote_identifier(target_table)
             if overwrite:
                 con.execute(f"DROP TABLE IF EXISTS {safe_table}")
-            con.execute(f"CREATE TABLE {safe_table} AS SELECT * FROM tmp_ingest")
-            con.unregister("tmp_ingest")
+            
+            # DuckDB can directly create table from pandas DataFrame
+            con.execute(f"CREATE TABLE {safe_table} AS SELECT * FROM df")
         finally:
             con.close()
 

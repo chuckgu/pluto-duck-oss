@@ -172,8 +172,8 @@ class DataSourceRepository:
     def _row_to_entity(self, row: tuple) -> DataSource:
         """Convert database row to DataSource entity."""
         return DataSource(
-            id=row[0],
-            project_id=row[1],
+            id=str(row[0]),
+            project_id=str(row[1]) if row[1] else None,
             name=row[2],
             description=row[3],
             connector_type=row[4],

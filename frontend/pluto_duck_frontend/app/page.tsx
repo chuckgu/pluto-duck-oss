@@ -60,7 +60,6 @@ const suggestions = [
   'Show me top 5 products by revenue',
   'List customers from last month',
   'Analyze sales trends by region',
-  'What are the latest orders?',
 ];
 
 const MODELS = [
@@ -552,7 +551,7 @@ export default function WorkspacePage() {
         console.error('Failed to submit message', error);
       }
     },
-    [activeSession, selectedModel, loadSessions, resetStream],
+    [activeSession, selectedModel, selectedDataSource, loadSessions, resetStream],
   );
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -710,15 +709,17 @@ export default function WorkspacePage() {
       />
 
       {/* Main content area - view switching */}
+      <div className="relative flex size-full flex-col overflow-hidden bg-muted/5">
       {currentView === 'data-sources' ? (
         <DataSourcesView 
           onImportClick={handleImportClick}
           refreshTrigger={dataSourcesRefresh}
         />
       ) : (
-        <div className="relative flex size-full flex-col divide-y overflow-hidden bg-muted/5">
+        <Fragment>
+        <div className="relative flex size-full flex-col divide-y overflow-hidden">
         <Conversation>
-          <ConversationContent>
+          <ConversationContent className="flex flex-col min-h-full">
             {loading && (
               <div className="px-4 py-6">
                 <div className="mx-auto max-w-3xl">
@@ -806,10 +807,17 @@ export default function WorkspacePage() {
             {/* Empty state */}
             {!loading && messages.length === 0 && (
               <div className="flex flex-1 items-center justify-center px-4">
-                <div className="mx-auto max-w-3xl">
+                <div className="mx-auto max-w-3xl text-center space-y-6">
                   <p className="text-sm text-muted-foreground">
                     {activeSession ? 'No messages yet.' : 'Start a new conversation below.'}
                   </p>
+                  {!activeSession && (
+                    <Suggestions>
+                      {suggestions.map(suggestion => (
+                        <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
+                      ))}
+                    </Suggestions>
+                  )}
                 </div>
               </div>
             )}
@@ -817,17 +825,8 @@ export default function WorkspacePage() {
           <ConversationScrollButton />
         </Conversation>
 
-        {/* Input area with suggestions */}
-        <div className="grid shrink-0 gap-4 pt-4">
-          {messages.length === 0 && (
-            <div className="px-4">
-              <Suggestions className="mx-auto max-w-3xl">
-                {suggestions.map(suggestion => (
-                  <Suggestion key={suggestion} onClick={() => handleSuggestionClick(suggestion)} suggestion={suggestion} />
-                ))}
-              </Suggestions>
-            </div>
-          )}
+        {/* Input area */}
+        <div className="shrink-0 pt-4">
           <div className="w-full px-4 pb-4">
             <div className="mx-auto max-w-3xl">
               <PromptInput onSubmit={handleSubmit}>
@@ -877,7 +876,9 @@ export default function WorkspacePage() {
           </div>
         </div>
       </div>
+      </Fragment>
       )}
+      </div>
     </div>
   );
 }

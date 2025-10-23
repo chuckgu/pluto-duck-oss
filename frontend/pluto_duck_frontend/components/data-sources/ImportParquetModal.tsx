@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { FolderOpenIcon } from 'lucide-react';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import {
   Dialog,
   DialogContent,
@@ -106,6 +108,24 @@ export function ImportParquetModal({ open, onOpenChange, onImportSuccess }: Impo
     }
   };
 
+  const handleBrowse = async () => {
+    try {
+      const selected = await openDialog({
+        multiple: false,
+        filters: [{
+          name: 'Parquet Files',
+          extensions: ['parquet']
+        }]
+      });
+      
+      if (selected) {
+        setFilePath(selected as string);
+      }
+    } catch (err) {
+      console.error('Failed to open file dialog:', err);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -133,12 +153,24 @@ export function ImportParquetModal({ open, onOpenChange, onImportSuccess }: Impo
             <label htmlFor="file-path" className="text-sm font-medium">
               File Path *
             </label>
-            <Input
-              id="file-path"
-              placeholder="/Users/username/data/sales.parquet"
-              value={filePath}
-              onChange={(e) => setFilePath(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="file-path"
+                placeholder="/Users/username/data/sales.parquet"
+                value={filePath}
+                onChange={(e) => setFilePath(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleBrowse}
+                title="Browse files"
+              >
+                <FolderOpenIcon className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Full path to the Parquet file
             </p>

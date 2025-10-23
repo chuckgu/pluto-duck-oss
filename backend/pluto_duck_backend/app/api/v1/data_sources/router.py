@@ -212,7 +212,7 @@ def delete_data_source(
     source_id: str,
     drop_table: bool = False,
     repo: DataSourceRepository = Depends(get_repository),
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """Delete a data source record and optionally drop the DuckDB table."""
     source = repo.get(source_id)
     if not source:

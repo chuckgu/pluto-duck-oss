@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { FolderOpenIcon } from 'lucide-react';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import {
   Dialog,
   DialogContent,
@@ -116,6 +118,24 @@ export function ImportSQLiteModal({ open, onOpenChange, onImportSuccess }: Impor
     }
   };
 
+  const handleBrowse = async () => {
+    try {
+      const selected = await openDialog({
+        multiple: false,
+        filters: [{
+          name: 'SQLite Database',
+          extensions: ['db', 'sqlite', 'sqlite3']
+        }]
+      });
+      
+      if (selected) {
+        setDbPath(selected as string);
+      }
+    } catch (err) {
+      console.error('Failed to open file dialog:', err);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
@@ -143,12 +163,24 @@ export function ImportSQLiteModal({ open, onOpenChange, onImportSuccess }: Impor
             <label htmlFor="db-path" className="text-sm font-medium">
               Database Path *
             </label>
-            <Input
-              id="db-path"
-              placeholder="/Users/username/data/database.db"
-              value={dbPath}
-              onChange={(e) => setDbPath(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="db-path"
+                placeholder="/Users/username/data/database.db"
+                value={dbPath}
+                onChange={(e) => setDbPath(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleBrowse}
+                title="Browse files"
+              >
+                <FolderOpenIcon className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Full path to the SQLite database file
             </p>
