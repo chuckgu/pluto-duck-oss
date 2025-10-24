@@ -3,7 +3,7 @@ export interface AgentRunResponse {
   events_url: string;
 }
 
-const DEFAULT_BACKEND_URL = '';
+const DEFAULT_BACKEND_URL = 'http://127.0.0.1:8123';
 
 export function getBackendUrl(): string {
   const base = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
