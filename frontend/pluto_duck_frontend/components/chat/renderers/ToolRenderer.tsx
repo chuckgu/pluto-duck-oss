@@ -30,6 +30,7 @@ import {
   shouldDefaultOpenToolTodo,
   shouldShowToolTodoChevron,
 } from './toolTodoViewModel';
+import { extractEmbeddableAsset } from './toolAssetDetector';
 
 /**
  * Convert snake_case or camelCase to Title Case
@@ -160,11 +161,13 @@ function getToolUIState(state: ToolItem['state']): 'input-streaming' | 'output-a
 export interface ToolRendererProps {
   item: ToolItem;
   variant?: 'default' | 'inline';
+  onRequestAssetEmbed?: (analysisId: string) => void;
 }
 
 export const ToolRenderer = memo(function ToolRenderer({
   item,
   variant = 'default',
+  onRequestAssetEmbed,
 }: ToolRendererProps) {
   // 1) inline write_todos
   if (variant === 'inline' && item.toolName === 'write_todos') {
@@ -261,6 +264,10 @@ export const ToolRenderer = memo(function ToolRenderer({
   const keyParam = extractKeyParam(item.input);
   const preview = item.state !== 'pending' ? getFirstMeaningfulItem(item.output) : null;
   const detailRows = buildToolDetailRowsForChild(item);
+  const embeddableAsset =
+    item.state === 'completed'
+      ? extractEmbeddableAsset(item.toolName, item.output)
+      : null;
 
   return (
     <Tool defaultOpen={false}>
@@ -289,6 +296,17 @@ export const ToolRenderer = memo(function ToolRenderer({
           </div>
         )}
       </ToolContent>
+      {embeddableAsset && (
+        <div className="pl-[38px] pr-2 pb-2">
+          <button
+            type="button"
+            className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[0.75rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => onRequestAssetEmbed?.(embeddableAsset.analysisId)}
+          >
+            Send to Board · {embeddableAsset.label}
+          </button>
+        </div>
+      )}
     </Tool>
   );
 });

@@ -613,6 +613,10 @@ function WorkspacePageBody({
     }
   }, [activeBoard]);
 
+  const handleRequestAssetEmbed = useCallback((analysisId: string) => {
+    console.log('[chat] request asset embed', { analysisId });
+  }, []);
+
   // Handle embedding asset from chat to board
   const handleEmbedAssetToBoard = useCallback((analysisId: string, config: AssetEmbedConfig) => {
     if (!activeBoard) {
@@ -981,6 +985,7 @@ function WorkspacePageBody({
                 savedTabs={currentProject?.settings?.ui_state?.chat?.open_tabs}
                 savedActiveTabId={currentProject?.settings?.ui_state?.chat?.active_tab_id}
                 onSendToBoard={handleSendToBoard}
+                onRequestAssetEmbed={handleRequestAssetEmbed}
                 onEmbedAssetToBoard={handleEmbedAssetToBoard}
               />
             </div>

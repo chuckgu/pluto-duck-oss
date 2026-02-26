@@ -19,6 +19,7 @@ export interface RenderItemProps {
   onRegenerate?: (messageId: string) => void;
   onFeedback?: (messageId: string, type: 'like' | 'dislike') => void;
   onSendToBoard?: (messageId: string, content: string) => void;
+  onRequestAssetEmbed?: (analysisId: string) => void;
   onApprovalDecision?: (approvalEventId: string, runId: string | null, decision: 'approved' | 'rejected') => void;
 }
 
@@ -32,6 +33,7 @@ export const RenderItem = memo(function RenderItem({
   onRegenerate,
   onFeedback,
   onSendToBoard,
+  onRequestAssetEmbed,
   onApprovalDecision,
 }: RenderItemProps) {
   switch (item.type) {
@@ -53,10 +55,20 @@ export const RenderItem = memo(function RenderItem({
       );
 
     case 'tool':
-      return <ToolRenderer item={item} />;
+      return (
+        <ToolRenderer
+          item={item}
+          onRequestAssetEmbed={onRequestAssetEmbed}
+        />
+      );
 
     case 'tool-group':
-      return <ToolGroupRenderer item={item} />;
+      return (
+        <ToolGroupRenderer
+          item={item}
+          onRequestAssetEmbed={onRequestAssetEmbed}
+        />
+      );
 
     case 'assistant-message':
       return (

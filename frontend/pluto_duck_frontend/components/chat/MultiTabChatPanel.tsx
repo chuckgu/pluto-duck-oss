@@ -18,6 +18,7 @@ interface MultiTabChatPanelProps {
   savedTabs?: Array<{ id: string; order: number }>;
   savedActiveTabId?: string;
   onSendToBoard?: (messageId: string, content: string) => void;
+  onRequestAssetEmbed?: (analysisId: string) => void;
   onEmbedAssetToBoard?: (analysisId: string, config: AssetEmbedConfig) => void;
 }
 
@@ -32,6 +33,7 @@ export function MultiTabChatPanel({
   savedTabs,
   savedActiveTabId,
   onSendToBoard,
+  onRequestAssetEmbed,
   onEmbedAssetToBoard,
 }: MultiTabChatPanelProps) {
   const {
@@ -142,6 +144,7 @@ export function MultiTabChatPanel({
               onSubmit={handleSubmit}
               projectId={projectId || undefined}
               onSendToBoard={onSendToBoard}
+              onRequestAssetEmbed={onRequestAssetEmbed}
               onApprovalDecision={handleApprovalDecision}
               onEmbedAssetToBoard={onEmbedAssetToBoard}
             />
@@ -165,6 +168,7 @@ export function MultiTabChatPanel({
               feedbackMap={feedbackMap}
               projectId={projectId || undefined}
               onSendToBoard={onSendToBoard}
+              onRequestAssetEmbed={onRequestAssetEmbed}
               onApprovalDecision={handleApprovalDecision}
               onEmbedAssetToBoard={onEmbedAssetToBoard}
             />
