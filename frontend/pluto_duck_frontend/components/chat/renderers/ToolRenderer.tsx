@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDownIcon } from 'lucide-react';
 import {
   Tool,
@@ -296,17 +297,26 @@ export const ToolRenderer = memo(function ToolRenderer({
           </div>
         )}
       </ToolContent>
-      {embeddableAsset && (
-        <div className="pl-[38px] pr-2 pb-2">
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[0.75rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => onRequestAssetEmbed?.(embeddableAsset.analysisId)}
+      <AnimatePresence initial={false}>
+        {embeddableAsset && (
+          <motion.div
+            key={embeddableAsset.analysisId}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="pl-[38px] pr-2 pb-2"
           >
-            Send to Board · {embeddableAsset.label}
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[0.75rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => onRequestAssetEmbed?.(embeddableAsset.analysisId)}
+            >
+              Send to Board · {embeddableAsset.label}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Tool>
   );
 });

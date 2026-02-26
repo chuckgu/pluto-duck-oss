@@ -61,6 +61,13 @@ test('extractEmbeddableAsset returns null for non-target tools or invalid states
     null,
   );
   assert.equal(
+    extractEmbeddableAsset('run_analysis', {
+      status: 'success',
+      analysis_id: 'analysis-3',
+    }),
+    null,
+  );
+  assert.equal(
     extractEmbeddableAsset('save_analysis', {
       status: 'error',
       analysis_id: 'analysis-3',
