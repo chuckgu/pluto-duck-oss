@@ -99,3 +99,57 @@ def test_append_and_get_messages_preserve_display_order_contract(tmp_path) -> No
     assert messages[0]["content"]["display_order"] == 41
     assert messages[1]["display_order"] == 42
     assert messages[1]["content"]["display_order"] == 42
+
+
+def test_get_conversation_events_returns_latest_window(tmp_path) -> None:
+    warehouse = tmp_path / "warehouse.duckdb"
+    repo = ChatRepository(warehouse)
+
+    conversation_id = str(uuid4())
+    run_id = str(uuid4())
+    repo.create_conversation(conversation_id, "hello", {})
+    repo.set_active_run(conversation_id, run_id)
+
+    for idx in range(220):
+        repo.log_event(
+            conversation_id,
+            {
+                "type": "reasoning",
+                "subtype": "chunk",
+                "content": {"phase": "llm_reasoning", "text": f"token-{idx}"},
+                "metadata": {"run_id": run_id},
+                "timestamp": "2025-01-01T00:00:00+00:00",
+            },
+        )
+
+    repo.log_event(
+        conversation_id,
+        {
+            "type": "tool",
+            "subtype": "start",
+            "content": {"tool": "save_analysis", "input": "{}"},
+            "metadata": {"run_id": run_id},
+            "timestamp": "2025-01-01T00:00:00+00:00",
+        },
+    )
+    repo.log_event(
+        conversation_id,
+        {
+            "type": "tool",
+            "subtype": "end",
+            "content": {
+                "tool": "save_analysis",
+                "output": {"status": "success", "analysis_id": "asset-1"},
+            },
+            "metadata": {"run_id": run_id},
+            "timestamp": "2025-01-01T00:00:00+00:00",
+        },
+    )
+
+    events = repo.get_conversation_events(conversation_id, limit=200)
+
+    assert len(events) == 200
+    assert events[0]["sequence"] == 23
+    assert events[-1]["sequence"] == 222
+    assert any(event["type"] == "tool" and event["subtype"] == "start" for event in events)
+    assert any(event["type"] == "tool" and event["subtype"] == "end" for event in events)

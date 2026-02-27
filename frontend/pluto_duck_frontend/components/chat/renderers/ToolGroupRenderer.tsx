@@ -19,6 +19,7 @@ import { formatToolName } from './ToolRenderer';
 import { buildToolDetailEntriesForChildren } from './toolDetailContent';
 import { parseTodosFromToolPayload } from './toolTodoParser';
 import { getToolTodoTextClass } from './toolTodoViewModel';
+import { extractEmbeddableAssetsFromToolGroup } from './toolAssetDetector';
 
 function mapGroupStateToPhase(state: ToolGroupItem['state']): 'running' | 'complete' | 'error' {
   if (state === 'pending') {
@@ -91,13 +92,35 @@ function renderTodoChildren(children: ToolItem[]) {
 
 export interface ToolGroupRendererProps {
   item: ToolGroupItem;
+  onRequestAssetEmbed?: (analysisId: string) => void;
 }
 
 export const ToolGroupRenderer = memo(function ToolGroupRenderer({
   item,
+  onRequestAssetEmbed,
 }: ToolGroupRendererProps) {
   const isTodo = item.toolName === 'write_todos';
   const displayName = isTodo ? 'Update Todos' : formatToolName(item.toolName);
+  // Check completed children individually — start/end events may not be
+  // correlated (missing tool_call_id), so the group state can remain
+  // 'pending' even when some children already carry a completed output.
+  const embeddableAssets =
+    item.toolName === 'save_analysis'
+      ? extractEmbeddableAssetsFromToolGroup(
+          item.children.filter(c => c.state === 'completed')
+        )
+      : [];
+
+  // DEBUG: Remove after verifying Send to Board button
+  if (item.toolName === 'save_analysis') {
+    console.log('[SendToBoard GROUP DEBUG]', {
+      groupState: item.state,
+      childrenCount: item.children.length,
+      childrenStates: item.children.map(c => ({ state: c.state, hasOutput: c.output !== undefined })),
+      embeddableAssets,
+      hasCallback: !!onRequestAssetEmbed,
+    });
+  }
 
   return (
     <Collapsible
@@ -115,6 +138,20 @@ export const ToolGroupRenderer = memo(function ToolGroupRenderer({
           : renderDefaultChildren(item.children)
         }
       </CollapsibleContent>
+      {embeddableAssets.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pl-[38px] pr-2 pb-2">
+          {embeddableAssets.map(asset => (
+            <button
+              key={asset.analysisId}
+              type="button"
+              className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[0.75rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => onRequestAssetEmbed?.(asset.analysisId)}
+            >
+              Send to Board · {asset.label}
+            </button>
+          ))}
+        </div>
+      )}
     </Collapsible>
   );
 });

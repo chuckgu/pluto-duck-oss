@@ -24,6 +24,7 @@ import { DatasetList, ProfileCard } from '../components/sidebar';
 import { DatasetDetailView } from '../components/datasets';
 import { AssetListView } from '../components/assets';
 import { ProjectSelector, CreateProjectModal } from '../components/projects';
+import { DisplayConfigModal } from '../components/editor/components/DisplayConfigModal';
 import { useBoards } from '../hooks/useBoards';
 import { useProjects } from '../hooks/useProjects';
 import { useProjectState } from '../hooks/useProjectState';
@@ -48,6 +49,9 @@ import { useBackendStatus } from '../hooks/useBackendStatus';
 type MainView = 'boards' | 'assets' | 'datasets';
 type Dataset = FileAsset | CachedTable;
 type Locale = 'en' | 'ko';
+type PendingBoardAction =
+  | { type: 'markdown'; content: string }
+  | { type: 'asset-embed'; analysisId: string };
 
 const SIDEBAR_COLLAPSED_KEY = 'pluto-duck-sidebar-collapsed';
 const SELECTED_DATASET_ID_KEY = 'pluto_selected_dataset_id';
@@ -97,7 +101,8 @@ function WorkspacePageBody({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatPanelCollapsed, setChatPanelCollapsed] = useState(false);
   const [boardSelectorOpen, setBoardSelectorOpen] = useState(false);
-  const [pendingSendContent, setPendingSendContent] = useState<string | null>(null);
+  const [pendingBoardAction, setPendingBoardAction] = useState<PendingBoardAction | null>(null);
+  const [chatEmbedFlow, setChatEmbedFlow] = useState<{ analysisId: string } | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'boards' | 'datasets'>('boards');
   const [sidebarDatasets, setSidebarDatasets] = useState<(FileAsset | CachedTable)[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
@@ -608,10 +613,35 @@ function WorkspacePageBody({
       boardsViewRef.current?.insertMarkdown(content);
     } else {
       // No board selected - show selector modal
-      setPendingSendContent(content);
+      setPendingBoardAction({ type: 'markdown', content });
       setBoardSelectorOpen(true);
     }
   }, [activeBoard]);
+
+  const handleRequestAssetEmbed = useCallback((analysisId: string) => {
+    if (activeBoard) {
+      setChatEmbedFlow({ analysisId });
+      return;
+    }
+    setPendingBoardAction({ type: 'asset-embed', analysisId });
+    setBoardSelectorOpen(true);
+  }, [activeBoard]);
+
+  const handleChatEmbedConfigSave = useCallback((config: AssetEmbedConfig) => {
+    if (!chatEmbedFlow) {
+      return;
+    }
+    if (!defaultProjectId) {
+      console.warn('No project selected.');
+      return;
+    }
+    boardsViewRef.current?.insertAssetEmbed(chatEmbedFlow.analysisId, defaultProjectId, config);
+    setChatEmbedFlow(null);
+  }, [chatEmbedFlow, defaultProjectId]);
+
+  const handleChatEmbedCancel = useCallback(() => {
+    setChatEmbedFlow(null);
+  }, []);
 
   // Handle embedding asset from chat to board
   const handleEmbedAssetToBoard = useCallback((analysisId: string, config: AssetEmbedConfig) => {
@@ -631,17 +661,26 @@ function WorkspacePageBody({
   // Handle board selection from modal
   const handleBoardSelect = useCallback((boardId: string) => {
     const board = boards.find(b => b.id === boardId);
-    if (board) {
-      selectBoard(board);
-      // Wait for board to be selected and editor to mount, then insert content
-      if (pendingSendContent) {
-        setTimeout(() => {
-          boardsViewRef.current?.insertMarkdown(pendingSendContent);
-          setPendingSendContent(null);
-        }, 100);
-      }
+    if (!board) {
+      return;
     }
-  }, [boards, selectBoard, pendingSendContent]);
+    selectBoard(board);
+
+    if (!pendingBoardAction) {
+      return;
+    }
+
+    const action = pendingBoardAction;
+    setPendingBoardAction(null);
+    // Wait for board selection + editor mount before applying the pending action.
+    setTimeout(() => {
+      if (action.type === 'markdown') {
+        boardsViewRef.current?.insertMarkdown(action.content);
+        return;
+      }
+      setChatEmbedFlow({ analysisId: action.analysisId });
+    }, 100);
+  }, [boards, selectBoard, pendingBoardAction]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -981,6 +1020,7 @@ function WorkspacePageBody({
                 savedTabs={currentProject?.settings?.ui_state?.chat?.open_tabs}
                 savedActiveTabId={currentProject?.settings?.ui_state?.chat?.active_tab_id}
                 onSendToBoard={handleSendToBoard}
+                onRequestAssetEmbed={handleRequestAssetEmbed}
                 onEmbedAssetToBoard={handleEmbedAssetToBoard}
               />
             </div>
@@ -1088,6 +1128,15 @@ function WorkspacePageBody({
         boards={boards}
         onSelect={handleBoardSelect}
       />
+      {chatEmbedFlow && defaultProjectId && (
+        <DisplayConfigModal
+          open={true}
+          analysisId={chatEmbedFlow.analysisId}
+          projectId={defaultProjectId}
+          onSave={handleChatEmbedConfigSave}
+          onCancel={handleChatEmbedCancel}
+        />
+      )}
     </div>
   );
 }

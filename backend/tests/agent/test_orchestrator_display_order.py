@@ -182,6 +182,40 @@ async def test_hitl_events_get_unique_display_order() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tool_start_end_emit_stable_tool_call_id() -> None:
+    """Tool start/end events must share tool_call_id for frontend correlation."""
+    collected: List[Dict[str, Any]] = []
+    callback_ref: list[PlutoDuckEventCallbackHandler | None] = [None]
+
+    emit = _build_emit(collected=collected, callback_ref=callback_ref)
+
+    handler = PlutoDuckEventCallbackHandler(
+        sink=EventSink(emit=emit),
+        run_id="run-tool-id",
+        display_order_start=1,
+    )
+    callback_ref[0] = handler
+
+    await handler.on_tool_start({"name": "save_analysis"}, '{"name":"a"}')
+    await handler.on_tool_end({"status": "success"})
+
+    tool_events = [event for event in collected if event["type"] == "tool"]
+    assert len(tool_events) == 2
+
+    start_event = tool_events[0]
+    end_event = tool_events[1]
+
+    start_tool_call_id = start_event["metadata"].get("tool_call_id")
+    end_tool_call_id = end_event["metadata"].get("tool_call_id")
+
+    assert isinstance(start_tool_call_id, str)
+    assert start_tool_call_id
+    assert start_event["content"]["tool_call_id"] == start_tool_call_id
+    assert end_tool_call_id == start_tool_call_id
+    assert end_event["content"]["tool_call_id"] == start_tool_call_id
+
+
+@pytest.mark.asyncio
 async def test_finally_events_get_display_order() -> None:
     """MESSAGE/FINAL and RUN/END events emitted via emit() get display_order assigned."""
     collected: List[Dict[str, Any]] = []

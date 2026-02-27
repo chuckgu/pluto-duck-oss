@@ -4,7 +4,7 @@
 Chat with your data, build pipelines, and manage analytics assets—all on your local machine.
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="Pluto Duck Screenshot" width="80%" />
+  <img src=".github/assets/screenshot.png" alt="Pluto Duck Screenshot" width="80%" />
 </p>
 
 ## 🌟 Product Vision

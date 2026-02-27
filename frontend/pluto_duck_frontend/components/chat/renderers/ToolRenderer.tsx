@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { ChevronDownIcon } from 'lucide-react';
 import {
   Tool,
@@ -30,6 +31,7 @@ import {
   shouldDefaultOpenToolTodo,
   shouldShowToolTodoChevron,
 } from './toolTodoViewModel';
+import { extractEmbeddableAsset } from './toolAssetDetector';
 
 /**
  * Convert snake_case or camelCase to Title Case
@@ -160,11 +162,13 @@ function getToolUIState(state: ToolItem['state']): 'input-streaming' | 'output-a
 export interface ToolRendererProps {
   item: ToolItem;
   variant?: 'default' | 'inline';
+  onRequestAssetEmbed?: (analysisId: string) => void;
 }
 
 export const ToolRenderer = memo(function ToolRenderer({
   item,
   variant = 'default',
+  onRequestAssetEmbed,
 }: ToolRendererProps) {
   // 1) inline write_todos
   if (variant === 'inline' && item.toolName === 'write_todos') {
@@ -261,6 +265,21 @@ export const ToolRenderer = memo(function ToolRenderer({
   const keyParam = extractKeyParam(item.input);
   const preview = item.state !== 'pending' ? getFirstMeaningfulItem(item.output) : null;
   const detailRows = buildToolDetailRowsForChild(item);
+  const embeddableAsset =
+    item.state === 'completed'
+      ? extractEmbeddableAsset(item.toolName, item.output)
+      : null;
+
+  // DEBUG: Remove after verifying Send to Board button
+  if (item.toolName === 'save_analysis') {
+    console.log('[SendToBoard DEBUG]', {
+      toolName: item.toolName,
+      state: item.state,
+      output: item.output,
+      embeddableAsset,
+      hasCallback: !!onRequestAssetEmbed,
+    });
+  }
 
   return (
     <Tool defaultOpen={false}>
@@ -289,6 +308,26 @@ export const ToolRenderer = memo(function ToolRenderer({
           </div>
         )}
       </ToolContent>
+      <AnimatePresence initial={false}>
+        {embeddableAsset && (
+          <motion.div
+            key={embeddableAsset.analysisId}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="pl-[38px] pr-2 pb-2"
+          >
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md border border-border bg-background px-2 py-1 text-[0.75rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => onRequestAssetEmbed?.(embeddableAsset.analysisId)}
+            >
+              Send to Board · {embeddableAsset.label}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Tool>
   );
 });

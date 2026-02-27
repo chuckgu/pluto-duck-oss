@@ -23,7 +23,6 @@ import { LoadingDots } from '../ai-elements/loading-dots';
 import { MentionMenu } from './MentionMenu';
 import { ChatOnboarding } from './ChatOnboarding';
 import { RenderItem, type FeedbackType } from './renderers';
-import { AssetEmbedTestButtons } from './AssetEmbedTestButtons';
 import { type MentionItem } from '../../hooks/useAssetMentions';
 import type { ChatSessionSummary } from '../../lib/chatApi';
 import type { ChatRenderItem, AssistantMessageItem, ReasoningItem } from '../../types/chatRenderItem';
@@ -64,6 +63,7 @@ interface ConversationMessagesProps {
   onEditUserMessage?: (messageId: string, content: string) => void;
   onFeedback?: (messageId: string, type: 'like' | 'dislike') => void;
   onSendToBoard?: (messageId: string, content: string) => void;
+  onRequestAssetEmbed?: (analysisId: string) => void;
   onApprovalDecision?: (approvalEventId: string, runId: string | null, decision: 'approved' | 'rejected') => void;
 }
 
@@ -88,6 +88,7 @@ const ConversationMessages = memo(function ConversationMessages({
   onEditUserMessage,
   onFeedback,
   onSendToBoard,
+  onRequestAssetEmbed,
   onApprovalDecision,
 }: ConversationMessagesProps) {
   const previousRenderItemsRef = useRef<ChatRenderItem[]>(renderItems);
@@ -257,6 +258,7 @@ const ConversationMessages = memo(function ConversationMessages({
               onEditUserMessage={onEditUserMessage}
               onFeedback={onFeedback}
               onSendToBoard={onSendToBoard}
+              onRequestAssetEmbed={onRequestAssetEmbed}
               onApprovalDecision={onApprovalDecision}
             />
           </div>
@@ -294,6 +296,7 @@ interface ChatPanelProps {
   onEditUserMessage?: (messageId: string, content: string) => void;
   onFeedback?: (messageId: string, type: 'like' | 'dislike') => void;
   onSendToBoard?: (messageId: string, content: string) => void;
+  onRequestAssetEmbed?: (analysisId: string) => void;
   onApprovalDecision?: (approvalEventId: string, runId: string | null, decision: 'approved' | 'rejected') => void;
   onEmbedAssetToBoard?: (analysisId: string, config: AssetEmbedConfig) => void;
   feedbackMap?: Map<string, FeedbackType>;
@@ -314,6 +317,7 @@ export function ChatPanel({
   onEditUserMessage,
   onFeedback,
   onSendToBoard,
+  onRequestAssetEmbed,
   onApprovalDecision,
   onEmbedAssetToBoard,
   feedbackMap,
@@ -417,6 +421,7 @@ export function ChatPanel({
                   onEditUserMessage={onEditUserMessage}
                   onFeedback={onFeedback}
                   onSendToBoard={onSendToBoard}
+                  onRequestAssetEmbed={onRequestAssetEmbed}
                   onApprovalDecision={onApprovalDecision}
                 />
               </ConversationContent>
@@ -429,12 +434,6 @@ export function ChatPanel({
       {/* Input area */}
       <div className="shrink-0">
         <div className="w-full px-4 pb-4">
-          {/* Test buttons for Asset Embed (development only) */}
-          {process.env.NODE_ENV === 'development' && onEmbedAssetToBoard && (
-            <div className="mb-2">
-              <AssetEmbedTestButtons onEmbed={onEmbedAssetToBoard} />
-            </div>
-          )}
           <PromptInput onSubmit={handleSubmit}>
             <PromptInputBody>
               <PromptInputTextarea
