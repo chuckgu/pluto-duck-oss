@@ -1059,11 +1059,22 @@ class ChatRepository:
             conversation_run_id = self._as_non_empty_str(run_row[0] if run_row else None)
             rows = con.execute(
                 """
+                WITH latest_events AS (
+                    SELECT id, type, subtype, payload, metadata, timestamp
+                    FROM agent_events
+                    WHERE conversation_id = ?
+                    ORDER BY
+                        COALESCE(TRY_CAST(json_extract_string(metadata, '$.display_order') AS BIGINT), 0) DESC,
+                        timestamp DESC,
+                        id DESC
+                    LIMIT ?
+                )
                 SELECT id, type, subtype, payload, metadata, timestamp
-                FROM agent_events
-                WHERE conversation_id = ?
-                ORDER BY timestamp ASC, id ASC
-                LIMIT ?
+                FROM latest_events
+                ORDER BY
+                    COALESCE(TRY_CAST(json_extract_string(metadata, '$.display_order') AS BIGINT), 0) ASC,
+                    timestamp ASC,
+                    id ASC
                 """,
                 [conversation_id, limit],
             ).fetchall()

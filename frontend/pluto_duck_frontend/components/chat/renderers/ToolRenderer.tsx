@@ -270,6 +270,17 @@ export const ToolRenderer = memo(function ToolRenderer({
       ? extractEmbeddableAsset(item.toolName, item.output)
       : null;
 
+  // DEBUG: Remove after verifying Send to Board button
+  if (item.toolName === 'save_analysis') {
+    console.log('[SendToBoard DEBUG]', {
+      toolName: item.toolName,
+      state: item.state,
+      output: item.output,
+      embeddableAsset,
+      hasCallback: !!onRequestAssetEmbed,
+    });
+  }
+
   return (
     <Tool defaultOpen={false}>
       <ToolHeader

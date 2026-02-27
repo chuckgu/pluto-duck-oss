@@ -101,10 +101,26 @@ export const ToolGroupRenderer = memo(function ToolGroupRenderer({
 }: ToolGroupRendererProps) {
   const isTodo = item.toolName === 'write_todos';
   const displayName = isTodo ? 'Update Todos' : formatToolName(item.toolName);
+  // Check completed children individually — start/end events may not be
+  // correlated (missing tool_call_id), so the group state can remain
+  // 'pending' even when some children already carry a completed output.
   const embeddableAssets =
-    item.toolName === 'save_analysis' && item.state === 'completed'
-      ? extractEmbeddableAssetsFromToolGroup(item.children)
+    item.toolName === 'save_analysis'
+      ? extractEmbeddableAssetsFromToolGroup(
+          item.children.filter(c => c.state === 'completed')
+        )
       : [];
+
+  // DEBUG: Remove after verifying Send to Board button
+  if (item.toolName === 'save_analysis') {
+    console.log('[SendToBoard GROUP DEBUG]', {
+      groupState: item.state,
+      childrenCount: item.children.length,
+      childrenStates: item.children.map(c => ({ state: c.state, hasOutput: c.output !== undefined })),
+      embeddableAssets,
+      hasCallback: !!onRequestAssetEmbed,
+    });
+  }
 
   return (
     <Collapsible

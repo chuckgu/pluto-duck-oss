@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <filter id="mac-shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.15"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.05"/>
+    </filter>
+    <clipPath id="window-clip">
+      <rect x="40" y="40" width="1120" height="720" rx="10" />
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#000000" />
+
+  <!-- Main Window -->
+  <g filter="url(#mac-shadow)">
+    <!-- Base -->
+    <rect x="40" y="40" width="1120" height="720" rx="10" fill="#FFFFFF" />
+    
+    <g clip-path="url(#window-clip)">
+      <!-- ==================== LEFT SIDEBAR ==================== -->
+      <rect x="40" y="40" width="220" height="720" fill="#F9F9F9" />
+      <line x1="260" y1="40" x2="260" y2="760" stroke="#E5E5EA" stroke-width="1" />
+
+      <!-- Window Controls -->
+      <g transform="translate(56, 56)">
+        <circle cx="0" cy="0" r="5.5" fill="#FF5F56" stroke="#E0443E" stroke-width="0.5"/>
+        <circle cx="18" cy="0" r="5.5" fill="#FFBD2E" stroke="#DEA123" stroke-width="0.5"/>
+        <circle cx="36" cy="0" r="5.5" fill="#27C93F" stroke="#1AAB29" stroke-width="0.5"/>
+      </g>
+      <!-- Sidebar Toggle Icon -->
+      <path d="M4 6h16M4 12h16M4 18h16" stroke="#86868B" stroke-width="1.5" stroke-linecap="round" transform="translate(230, 48) scale(0.6)"/>
+
+      <!-- Workspace Title -->
+      <text x="56" y="100" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="14" font-weight="600">Default Workspace</text>
+      <path d="M0 0l3 3 3-3" stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(180, 96)"/>
+
+      <!-- Board / Dataset Toggle -->
+      <rect x="56" y="120" width="188" height="32" rx="6" fill="#F2F2F7" />
+      <rect x="58" y="122" width="92" height="28" rx="5" fill="#1D1D1F" />
+      <text x="104" y="141" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="12" font-weight="500" text-anchor="middle">보드</text>
+      <text x="196" y="141" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="12" font-weight="500" text-anchor="middle">데이터셋</text>
+
+      <!-- New Board Button -->
+      <text x="80" y="185" fill="#515154" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">새 보드</text>
+      <circle cx="64" cy="181" r="8" fill="#E5E5EA" />
+      <path d="M64 177v8M60 181h8" stroke="#86868B" stroke-width="1.5" stroke-linecap="round"/>
+
+      <!-- Board List -->
+      <rect x="50" y="210" width="200" height="46" rx="6" fill="#E5E5EA" />
+      <text x="60" y="230" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="600">새로운 보드랍니다</text>
+      <text x="60" y="246" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="11">1d ago</text>
+
+      <text x="60" y="286" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">보드 이름 바꾸면</text>
+      <text x="60" y="302" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="11">2월 6일 오후 10:20</text>
+
+      <text x="60" y="342" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">새로 만들기</text>
+      <text x="60" y="358" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="11">2월 6일 오후 10:20</text>
+
+      <text x="60" y="398" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">기본보드</text>
+      <text x="60" y="414" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="11">2월 6일 오후 10:19</text>
+
+      <!-- Bottom User/Menu -->
+      <text x="80" y="650" fill="#515154" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">데이터 연결</text>
+      <text x="80" y="680" fill="#515154" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">에셋</text>
+      
+      <circle cx="64" cy="720" r="14" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+      <text x="64" y="724" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600" text-anchor="middle">YK</text>
+      <text x="86" y="716" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" font-weight="600">Yoojung Kim</text>
+      <text x="86" y="730" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11">your@gmail.com</text>
+
+      <!-- ==================== CENTER PANEL (BOARD) ==================== -->
+      <line x1="820" y1="40" x2="820" y2="760" stroke="#E5E5EA" stroke-width="1" />
+
+      <!-- Top Tabs Area -->
+      <rect x="280" y="60" width="130" height="28" rx="14" fill="#F2F2F7" />
+      <text x="296" y="79" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">광고 성과 데이터 탐...</text>
+      <text x="430" y="79" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">2025-12월</text>
+      <text x="510" y="79" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="16">+</text>
+      
+      <!-- Icons Right -->
+      <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(740, 68) scale(0.8)">
+        <path d="M4 4h16v16H4zM4 8h16M8 4v16"/>
+      </g>
+      <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(770, 68) scale(0.8)">
+        <path d="M5 3l14 9-14 9z"/>
+      </g>
+      <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(800, 68) scale(0.8)">
+        <path d="M12 4v12M8 12l4 4 4-4M4 20h16"/>
+      </g>
+
+      <!-- Date / Title -->
+      <text x="540" y="125" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" text-anchor="middle">February 25, 2026 at 8:35 PM</text>
+      <text x="290" y="165" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="24" font-weight="700">광고 성과 데이터 탐색</text>
+
+      <!-- Chart Block -->
+      <rect x="290" y="200" width="500" height="280" rx="8" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+      <g transform="translate(290, 200)">
+        <rect x="16" y="16" width="12" height="12" fill="#34C759" />
+        <rect x="18" y="18" width="8" height="8" fill="#007AFF" />
+        <text x="36" y="26" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12">ads_meta_timeseries_campaign_performance_202512_metrics_nonzero_view</text>
+        
+        <text x="430" y="26" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11">Refresh</text>
+        <path d="M470 23h2M474 23h2M478 23h2" stroke="#86868B" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="0" y1="40" x2="500" y2="40" stroke="#F2F2F7" stroke-width="1" />
+
+        <!-- Y Axis -->
+        <text x="44" y="65" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" text-anchor="end">16.0K</text>
+        <text x="44" y="105" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" text-anchor="end">12.0K</text>
+        <text x="44" y="145" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" text-anchor="end">8.0K</text>
+        <text x="44" y="185" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" text-anchor="end">4.0K</text>
+        <text x="44" y="225" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" text-anchor="end">0</text>
+        
+        <!-- Grid lines -->
+        <line x1="56" y1="61" x2="480" y2="61" stroke="#F2F2F7" stroke-width="1" />
+        <line x1="56" y1="101" x2="480" y2="101" stroke="#F2F2F7" stroke-width="1" />
+        <line x1="56" y1="141" x2="480" y2="141" stroke="#F2F2F7" stroke-width="1" />
+        <line x1="56" y1="181" x2="480" y2="181" stroke="#F2F2F7" stroke-width="1" />
+        <line x1="56" y1="221" x2="480" y2="221" stroke="#E5E5EA" stroke-width="1" />
+
+        <!-- Chart Line -->
+        <path d="M60,130 L70,180 L80,120 L90,190 L100,170 L110,210 L120,200 L130,160 L140,110 L150,210 L160,170 L170,190 L180,160 L190,220 L200,60 L210,130 L220,70 L230,120 L240,160 L250,90 L260,210 L270,180 L280,190 L290,190 L300,200 L310,160 L320,210 L330,220 L340,70 L350,150 L360,210 L370,220 L380,180 L390,120 L400,100 L410,210 L420,130 L430,160 L440,210 L450,220 L460,220 L470,180" fill="none" stroke="#007AFF" stroke-width="2" stroke-linejoin="round"/>
+        
+        <!-- Legend -->
+        <circle cx="250" cy="260" r="3" fill="#FFFFFF" stroke="#007AFF" stroke-width="1.5" />
+        <text x="258" y="264" fill="#007AFF" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11">value</text>
+      </g>
+
+      <!-- Insight Text Block -->
+      <text x="290" y="520" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="18" font-weight="600">주요 인사이트</text>
+      
+      <circle cx="300" cy="546" r="2.5" fill="#86868B" />
+      <text x="314" y="550" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="14" line-height="1.6">
+        <tspan x="314" dy="0">전체 추이: 12/25에 큰 급등(+39.9%)이 있고 다음 날(12/26)엔 급락(-27.1%) — 크리스마스(또는 캠페인</tspan>
+        <tspan x="314" dy="22">예산 변경) 관련 일시적 변동으로 보입니다. 그 외 날짜는 대체로 30k~37k 범위에서 변동합니다.</tspan>
+      </text>
+
+      <circle cx="300" cy="600" r="2.5" fill="#86868B" />
+      <text x="314" y="604" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="14" line-height="1.6">
+        <tspan x="314" dy="0">플랫폼 기여도: Instagram이 일간 최대 기여(약 12k~15k)로 가장 큰 비중을 차지하고, Facebook도 꾸준히</tspan>
+        <tspan x="314" dy="22">높은 노출(약 10k~14k)입니다. Google은 일별 3~4k 수준, LinkedIn은 일별 4~5k 수준으로 비교적 작지만</tspan>
+        <tspan x="314" dy="22">(노출은 적음) 비용(Spend)/CPM이 매우 높아 보입니다.</tspan>
+      </text>
+
+      <circle cx="300" cy="676" r="2.5" fill="#86868B" />
+      <text x="314" y="680" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="14" line-height="1.6">
+        <tspan x="314" dy="0">상위 캠페인(기간 합계, 상위 6개): Instagram Acquisition(119,331), Facebook Acquisition(107,548),</tspan>
+        <tspan x="314" dy="22">LinkedIn Acquisition(48,009), Google Acquisition(37,212), Facebook Retargeting(18,754),</tspan>
+      </text>
+
+
+      <!-- ==================== RIGHT PANEL (AI CHAT) ==================== -->
+      <!-- Top Tabs Area -->
+      <text x="840" y="80" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="12">데이터 분석해볼래</text>
+      <text x="940" y="80" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="12">데이터 분석해보자</text>
+      
+      <!-- Active Tab -->
+      <rect x="1035" y="64" width="95" height="26" rx="6" fill="#F2F2F7" />
+      <text x="1045" y="80" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="12">데이터 분석해 +</text>
+      
+      <!-- Chat Content -->
+      <g transform="translate(840, 120)">
+        
+        <!-- User Message -->
+        <rect x="180" y="0" width="120" height="36" rx="18" fill="#F2F2F7" />
+        <text x="240" y="22" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13" text-anchor="middle">데이터 분석해볼래!</text>
+
+        <!-- Thought Process -->
+        <circle cx="4" cy="56" r="4" fill="#34C759" />
+        <text x="16" y="60" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">Thought for a few seconds</text>
+        <path d="M164 54l4 4 4-4" stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+        <!-- Agent Response -->
+        <text x="0" y="90" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">현재 데이터셋 5개가 전처리 준비가 되지 않았습니다:</text>
+        
+        <circle cx="6" cy="116" r="2" fill="#86868B" />
+        <text x="18" y="120" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">meta_facebook_ads_20251222_20251231</text>
+        
+        <circle cx="6" cy="140" r="2" fill="#86868B" />
+        <text x="18" y="144" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">meta_facebook_ads_20251201_20251214</text>
+        
+        <circle cx="6" cy="164" r="2" fill="#86868B" />
+        <text x="18" y="168" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">meta_instagram_ads_20251222_20251231</text>
+        
+        <circle cx="6" cy="188" r="2" fill="#86868B" />
+        <text x="18" y="192" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">linkedin_ads_20251222_20251231</text>
+
+        <circle cx="6" cy="212" r="2" fill="#86868B" />
+        <text x="18" y="216" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">google_ads_20251222_20251231</text>
+
+        <text x="0" y="246" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">전처리는 분석 품질을 높입니다. 지금 전처리를 실행할까요?</text>
+        <text x="0" y="266" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">(예/아니오)</text>
+
+        <!-- Feedback icons -->
+        <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(6, 280) scale(0.8)">
+          <path d="M4 4h12v12H4zM16 8h4v12H8v-4"/>
+        </g>
+        <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(36, 280) scale(0.8)">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </g>
+        <g stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" transform="translate(66, 280) scale(0.8)">
+          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/>
+        </g>
+
+        <!-- Thought Process 2 -->
+        <circle cx="4" cy="326" r="4" fill="#34C759" />
+        <text x="16" y="330" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">Thought for a few seconds</text>
+        <path d="M164 324l4 4 4-4" stroke="#86868B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+        <!-- User Message 2 -->
+        <rect x="70" y="340" width="230" height="66" rx="12" fill="#F2F2F7" />
+        <text x="86" y="362" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">meta_facebook_ads_20251222_</text>
+        <text x="86" y="378" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">20251231</text>
+        <text x="86" y="394" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">이거에 대한 전처리만 진행</text>
+
+        <!-- Agent Response 2 -->
+        <text x="0" y="440" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">다음 이슈(진단 결과)를 찾았습니다 — 각 항목에 대해 제안된</text>
+        <text x="0" y="460" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">수정안을 적용할까요? (예: "모두 적용", 또는 번호로 예/아니</text>
+        <text x="0" y="480" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">오 선택)</text>
+
+        <text x="0" y="510" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">1. 지출 있음에도 전환이 0인 값 존재</text>
+        <circle cx="20" cy="530" r="2" fill="#86868B" />
+        <text x="32" y="534" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif" font-size="13">제안: 행을 삭제하지 않고...</text>
+
+        <!-- Chart Type Buttons -->
+        <g transform="translate(0, 546)">
+          <rect x="0" y="0" width="46" height="24" rx="4" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+          <text x="23" y="16" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" text-anchor="middle">Table</text>
+          
+          <rect x="50" y="0" width="36" height="24" rx="4" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+          <text x="68" y="16" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" text-anchor="middle">Bar</text>
+          
+          <rect x="90" y="0" width="40" height="24" rx="4" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+          <text x="110" y="16" fill="#1D1D1F" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" text-anchor="middle">Line</text>
+        </g>
+
+        <!-- Input Area Bottom -->
+        <rect x="0" y="584" width="300" height="76" rx="12" fill="#FFFFFF" stroke="#E5E5EA" stroke-width="1" />
+        <text x="12" y="608" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">Continue this conversation...</text>
+        
+        <text x="12" y="644" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12">@ Context</text>
+        <path d="M72 638l3 3 3-3" stroke="#86868B" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        
+        <text x="96" y="644" fill="#86868B" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12">GPT-5 Mini</text>
+        <path d="M166 638l3 3 3-3" stroke="#86868B" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+        <!-- Up Arrow Submit -->
+        <circle cx="276" cy="640" r="12" fill="#E5E5EA" />
+        <path d="M276 644v-8M272 640l4-4 4 4" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+    </g>
+  </g>
+</svg>

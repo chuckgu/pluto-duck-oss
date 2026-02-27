@@ -23,7 +23,6 @@ import { LoadingDots } from '../ai-elements/loading-dots';
 import { MentionMenu } from './MentionMenu';
 import { ChatOnboarding } from './ChatOnboarding';
 import { RenderItem, type FeedbackType } from './renderers';
-import { AssetEmbedTestButtons } from './AssetEmbedTestButtons';
 import { type MentionItem } from '../../hooks/useAssetMentions';
 import type { ChatSessionSummary } from '../../lib/chatApi';
 import type { ChatRenderItem, AssistantMessageItem, ReasoningItem } from '../../types/chatRenderItem';
@@ -435,12 +434,6 @@ export function ChatPanel({
       {/* Input area */}
       <div className="shrink-0">
         <div className="w-full px-4 pb-4">
-          {/* Test buttons for Asset Embed (development only) */}
-          {process.env.NODE_ENV === 'development' && onEmbedAssetToBoard && (
-            <div className="mb-2">
-              <AssetEmbedTestButtons onEmbed={onEmbedAssetToBoard} />
-            </div>
-          )}
           <PromptInput onSubmit={handleSubmit}>
             <PromptInputBody>
               <PromptInputTextarea

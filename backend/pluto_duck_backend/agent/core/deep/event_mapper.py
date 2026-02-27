@@ -43,7 +43,7 @@ class PlutoDuckEventCallbackHandler(AsyncCallbackHandler):
         self._run_id = run_id
         self._conversation_id = conversation_id
         self._experiment_profile = experiment_profile or prompt_layout
-        self._tool_stack: list[str] = []
+        self._tool_stack: list[dict[str, str]] = []
         self._chunk_buffer: list[str] = []
         self._chunk_tokens = 0
         self._chunk_chars = 0
@@ -200,6 +200,19 @@ class PlutoDuckEventCallbackHandler(AsyncCallbackHandler):
         if not text:
             return None
         return text
+
+    def _resolve_tool_call_id(self, serialized: dict[str, Any], kwargs: dict[str, Any]) -> str:
+        candidates = (
+            kwargs.get("tool_call_id"),
+            kwargs.get("id"),
+            serialized.get("tool_call_id"),
+            serialized.get("call_id"),
+        )
+        for candidate in candidates:
+            text = self._coerce_text(candidate)
+            if text is not None:
+                return text
+        return f"tool-{uuid4()}"
 
     def _join_text_fragments(self, fragments: list[str]) -> str | None:
         normalized = [
@@ -496,26 +509,33 @@ class PlutoDuckEventCallbackHandler(AsyncCallbackHandler):
         **kwargs: Any,
     ) -> None:  # noqa: ANN401
         tool_name = serialized.get("name") or serialized.get("id") or "tool"
-        self._tool_stack.append(tool_name)
+        tool_call_id = self._resolve_tool_call_id(serialized, kwargs)
+        self._tool_stack.append({"name": tool_name, "tool_call_id": tool_call_id})
         await self._emit(
             AgentEvent(
                 type=EventType.TOOL,
                 subtype=EventSubType.START,
-                content={"tool": tool_name, "input": input_str},
-                metadata={"run_id": self._run_id},
+                content={"tool": tool_name, "input": input_str, "tool_call_id": tool_call_id},
+                metadata={"run_id": self._run_id, "tool_call_id": tool_call_id},
                 timestamp=self._ts(),
             )
         )
 
     async def on_tool_end(self, output: Any, **kwargs: Any) -> None:  # noqa: ANN401
-        # Pop the tool name from the stack to match with start event
-        tool_name = self._tool_stack.pop() if self._tool_stack else "tool"
+        # Keep the same tool_call_id between start/end so frontend correlation is stable.
+        if self._tool_stack:
+            tool_context = self._tool_stack.pop()
+            tool_name = tool_context["name"]
+            tool_call_id = tool_context["tool_call_id"]
+        else:
+            tool_name = "tool"
+            tool_call_id = self._coerce_text(kwargs.get("tool_call_id")) or f"tool-{uuid4()}"
         await self._emit(
             AgentEvent(
                 type=EventType.TOOL,
                 subtype=EventSubType.END,
-                content={"tool": tool_name, "output": self._json_safe(output)},
-                metadata={"run_id": self._run_id},
+                content={"tool": tool_name, "output": self._json_safe(output), "tool_call_id": tool_call_id},
+                metadata={"run_id": self._run_id, "tool_call_id": tool_call_id},
                 timestamp=self._ts(),
             )
         )
